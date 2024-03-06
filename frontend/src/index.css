@@ -1,0 +1,85 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 10px;
+}
+
+.header {
+  text-align: center;
+  font-size: 4rem;
+}
+
+.current-date {
+  text-align: center;
+  color: cornflowerblue;
+  font-size: 3rem;
+  margin-top: 2rem;
+}
+
+.time {
+  margin-top: 1rem;
+  text-align: center;
+  color: lightcoral;
+  font-size: 5rem;
+}
+
+.current-status {
+  color: black;
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 4rem;
+}
+
+.circle {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%; /* Makes it a circle */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white; /* Text color */
+  font-size: 24px; /* Text size */
+  font-family: Arial, sans-serif; /* Font */
+  margin: 0 auto;
+  flex-direction: column;
+  border: 4px solid gray;
+}
+
+.clock-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.clock-button button {
+  width: 10%;
+}
+
+.recent-punches {
+  margin: 2rem;
+}
+
+table {
+  font-family: arial, sans-serif;
+  border-collapse: collapse;
+  width: 90%;
+  font-size: 2rem;
+  margin: 0 auto;
+}
+
+td,
+th {
+  border: 1px solid #dddddd;
+  text-align: center;
+  padding: 1rem;
+}
+
+tr:nth-child(even) {
+  background-color: #dddddd;
+}
