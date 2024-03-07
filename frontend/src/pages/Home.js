@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import TimeSheet from "./../components/TimeSheet"
+import TimeSheet from "./../components/TimeSheet";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
+  const navigate = useNavigate();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
+    if (!localStorage.getItem("token")) {
+      navigate("/login");
+      return;
+    }
+
     let interval;
     if (isRunning) {
       interval = setInterval(() => {
@@ -47,6 +54,14 @@ const Home = () => {
 
   return (
     <div className="home">
+      <button
+        onClick={() => {
+          localStorage.removeItem("token");
+          navigate("/login");
+        }}
+      >
+        Log Out
+      </button>
       <h1 className="header">Clock In/Out</h1>
       <div className="current-date">{formattedFullDate}(Today)</div>
       <div className="circle">
@@ -58,7 +73,7 @@ const Home = () => {
       </div>
       <h1 className="recent-punches">RECENT PUNCHES</h1>
       <h1 className="date">{formattedPartialDate}</h1>
-      <TimeSheet/>
+      <TimeSheet />
     </div>
   );
 };

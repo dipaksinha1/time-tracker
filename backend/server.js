@@ -3,6 +3,7 @@ const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,20 @@ const db = new sqlite3.Database(
 
 // Middleware to parse JSON requests
 app.use(express.json());
+
+// app.use(cors({
+//   methods: 'GET,POST,PATCH,DELETE,OPTIONS',
+//   optionsSuccessStatus: 200,
+//   origin: 'http://localhost:1234'
+// }));
+// app.options('*', cors());
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 
 // Create Users and Attendance table schemas
 db.serialize(() => {
@@ -70,7 +85,8 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const email = req.body.email;
+  const password = req.body.password;
   try {
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
       if (err) {
@@ -222,7 +238,7 @@ app.get("/attendance-records", authenticateToken, (req, res) => {
 });
 
 app.get("/get-all", (req, res) => {
-  db.all("SELECT * FROM Attendance", (err, data) => {
+  db.all("SELECT * FROM Users", (err, data) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving attendance records");

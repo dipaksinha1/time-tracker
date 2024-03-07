@@ -1,10 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import Home from "./pages/Login"
+import Login from "./pages/Login";
+import Home from "./pages/Home";
+import { Routes, Route, BrowserRouter } from "react-router-dom";
 
 const App = () => {
   return (
-    <Home/>
+    <BrowserRouter>
+      <Routes>
+        <Route path="" element={<Login />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/home" element={<Home />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 
