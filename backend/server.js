@@ -139,7 +139,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.post("/logout", (req, res) => {
+app.get("/logout", (req, res) => {
   const authorizationHeader = req.headers.authorization;
 
   if (!authorizationHeader) {
@@ -222,10 +222,11 @@ app.post("/clock-out", authenticateToken, (req, res) => {
   );
 });
 
+// "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
   db.all(
-    "SELECT * FROM Attendance WHERE user_id = ?",
+    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = DATE('now', 'localtime') ORDER BY clock_in DESC",
     [user.id],
     (err, rows) => {
       if (err) {
@@ -246,6 +247,37 @@ app.get("/get-all", (req, res) => {
     res.status(200).json(data);
   });
 });
+
+app.get("/last-attendance", authenticateToken, (req, res) => {
+  db.get("SELECT * FROM Attendance ORDER BY id DESC LIMIT 1", (err, data) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Error retrieving attendance records");
+    }
+    res.status(200).json(data);
+  });
+});
+
+app.get("/user-fullname", (req, res) => {
+  db.get(
+    "SELECT firstname || ' ' || lastname AS fullName FROM Users",
+    (err, data) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Error retrieving attendance records");
+      }
+      res.status(200).json(data);
+    }
+  );
+});
+
+// db.run("DELETE FROM Attendance", function (err) {
+//   if (err) {
+//     console.error("Error deleting token:", err.message);
+//   } else {
+//     console.log("Token deleted from all records successfully.");
+//   }
+// });
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

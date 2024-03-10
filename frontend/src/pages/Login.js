@@ -32,7 +32,7 @@ function Login() {
       })
       .then((result) => {
         console.log(result.data);
-        alert("success");
+        // alert("success");
         localStorage.setItem("token", result.data.token);
         navigate("/home");
       })
@@ -43,20 +43,57 @@ function Login() {
   };
 
   return (
-    <div className="App">
-      Email :{" "}
-      <input value={email} onChange={handleEmail} type="text" required /> <br />
-      Password :{" "}
-      <input
-        value={password}
-        onChange={handlePassword}
-        type="text"
-        required
-      />{" "}
-      <br />
-      {errorMessage && <div>{errorMessage}</div>}
-      <br />
-      <button onClick={handleApi}>Login</button>
+    // <div className="App">
+    //   Email :
+    //   <input value={email} onChange={handleEmail} type="text" required /> <br />
+    //   Password :
+    //   <input
+    //     value={password}
+    //     onChange={handlePassword}
+    //     type="password"
+    //     required
+    //   />
+    //   <br />
+    //   {errorMessage && <div>{errorMessage}</div>}
+    //   <br />
+    //   <button onClick={handleApi}>Login</button>
+    // </div>
+    <div className="login">
+      <div className="container">
+        <div className="form" id="login">
+          <h1 className="form__title">Login</h1>
+          <div className="form__input-group">
+            <input
+              value={email}
+              onChange={handleEmail}
+              type="text"
+              className="form__input"
+              autoFocus
+              placeholder="Username"
+              id="usernameinput"
+            />
+          </div>
+          <div className="form__input-group">
+            <input
+              type="password"
+              value={password}
+              onChange={handlePassword}
+              className="form__input"
+              autoFocus
+              placeholder="Password"
+              id="passwordInput"
+            />
+            <div className="padding"></div>
+            <button
+              className="form__button"
+              id="loginButton"
+              onClick={handleApi}
+            >
+              Login
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

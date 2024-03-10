@@ -11,127 +11,53 @@
   align-items: center;
   min-height: 100vh;
   padding: 1rem 0.5rem;
-}
-
-.login {
-  margin: 100px auto;
-}
-
-section {
-  width: 100%;
-  max-width: 420px;
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  padding: 1rem;
-}
-
-form {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-  flex-grow: 1;
-  padding-bottom: 1rem;
-}
-
-a,
-a:visited {
-  color: #fff;
-}
-
-input[type="text"],
-input[type="password"],
-button,
-textarea {
-  font-family: "Nunito", sans-serif;
-  font-size: 22px;
-  padding: 0.25rem;
-  border-radius: 0.5rem;
-}
-
-label,
-button {
-  margin-top: 1rem;
-}
-
-button {
-  padding: 0.5rem;
-}
-
-.instructions {
-  font-size: 0.75rem;
-  border-radius: 0.5rem;
-  background: #000;
-  color: #fff;
-  padding: 0.25rem;
-  position: relative;
-  bottom: -10px;
-}
-
-.instructions > svg {
-  margin-right: 0.25rem;
-}
-
-.offscreen {
-  position: absolute;
-  left: -9999px;
-}
-
-.hide {
-  display: none;
-}
-
-.valid {
-  color: limegreen;
-  margin-left: 0.25rem;
-}
-
-.invalid {
-  color: red;
-  margin-left: 0.25rem;
-}
-
-.errmsg {
-  background-color: lightpink;
-  color: firebrick;
-  font-weight: bold;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.line {
-  display: inline-block;
+  font-size: 30px;
 }
 
 html {
   font-size: 10px;
 }
 
+.logout-link {
+  text-align: right;
+  font-size: 3rem;
+  padding: 1rem;
+  margin-right: 2rem;
+  font-weight: 400;
+}
+
+.logout-link a {
+  color: #ed553b;
+  text-decoration: none;
+}
+
 .header {
   text-align: center;
   font-size: 4rem;
+  color: #3caea3;
 }
 
 .current-date {
   text-align: center;
-  color: cornflowerblue;
+  color: #20639b;
   font-size: 3rem;
   margin-top: 2rem;
+  font-weight: 700;
 }
 
 .time {
   margin-top: 1rem;
   text-align: center;
-  color: lightcoral;
   font-size: 5rem;
+  color: #20639b; /* Text color */
 }
 
 .current-status {
-  color: black;
+  color: #ed553b;
   margin-top: 2rem;
   text-align: center;
-  font-size: 4rem;
+  font-size: 3rem;
+  font-weight: 300;
 }
 
 .circle {
@@ -141,12 +67,12 @@ html {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: white; /* Text color */
   font-size: 24px; /* Text size */
   font-family: Arial, sans-serif; /* Font */
   margin: 0 auto;
   flex-direction: column;
-  border: 4px solid gray;
+  /* border: 4px solid gray; */
+  background-color: #f6d55c;
 }
 
 .clock-button {
@@ -158,11 +84,27 @@ html {
 }
 
 .clock-button button {
+  padding: 16px;
+  border-radius: 20px;
+  font-size: 2rem;
   width: 10%;
+  background-color: #173f5f;
+  color: white;
 }
 
 .recent-punches {
-  margin: 2rem;
+  font-size: 3.5rem;
+  margin: 2rem auto;
+  color: #3caea3;
+  text-align: center;
+  margin-top: 4rem;
+}
+
+.date {
+  color: #ed553b;
+  margin-left: 5rem;
+  font-size: 4rem;
+  text-align: center;
 }
 
 table {
@@ -170,7 +112,12 @@ table {
   border-collapse: collapse;
   width: 90%;
   font-size: 2rem;
-  margin: 0 auto;
+  margin: 4rem auto;
+}
+
+table thead tr th {
+  background-color: #20639b;
+  color: white;
 }
 
 td,
@@ -182,4 +129,91 @@ th {
 
 tr:nth-child(even) {
   background-color: #dddddd;
+}
+
+* {
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  --bg-color: #ede9f8;
+  background-color: var(--bg-color);
+}
+
+.login {
+  --color-primary: #2d3436;
+  --color-secondary: #252c6a;
+  --border-radius: 4px;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 400px;
+  max-width: 400px;
+  margin: 1rem;
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  background: white;
+}
+
+.form--hidden {
+  display: none;
+}
+
+.form > *:first-child {
+  margin-top: 0;
+}
+
+.form > *:last-child {
+  margin-bottom: 0;
+}
+
+.form__title {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.form__input-group {
+  margin-bottom: 1rem;
+}
+
+.form__input {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  box-sizing: border-box;
+  border-radius: var(--border-radius);
+  border: 1px solid #ddd;
+  outline: none;
+  background: #eee;
+  transition: background 0.2s border-color 0.2s;
+}
+
+.form__input:focus {
+  border-color: var(--color-primary);
+  background: #fff;
+}
+
+.form__button {
+  width: 100%;
+  padding: 1rem 2rem;
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #fff;
+  border: none;
+  border-radius: var(--border-radius);
+  outline: none;
+  cursor: pointer;
+  background: var(--color-primary);
+}
+
+.form__button:active {
+  transform: scale(0.98);
+}
+
+.padding {
+  padding-bottom: 10px;
 }
