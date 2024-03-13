@@ -4,6 +4,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const cors = require("cors");
+const fs = require("fs");
+const csvWriter = require("csv-write-stream");
+const moment = require("moment");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +16,7 @@ console.log(secretKey);
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
-  "./db/sqlite.db",
+  "db/sqlite.db",
   sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
   (err) => {
     if (err) {
@@ -225,8 +228,9 @@ app.post("/clock-out", authenticateToken, (req, res) => {
 // "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
+  console.log(user.id);
   db.all(
-    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = DATE('now', 'localtime') ORDER BY clock_in DESC",
+    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
     [user.id],
     (err, rows) => {
       if (err) {
@@ -249,18 +253,11 @@ app.get("/get-all", (req, res) => {
 });
 
 app.get("/last-attendance", authenticateToken, (req, res) => {
-  db.get("SELECT * FROM Attendance ORDER BY id DESC LIMIT 1", (err, data) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error retrieving attendance records");
-    }
-    res.status(200).json(data);
-  });
-});
+  const { user } = req;
 
-app.get("/user-fullname", (req, res) => {
   db.get(
-    "SELECT firstname || ' ' || lastname AS fullName FROM Users",
+    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = DATE('now', 'localtime') ORDER BY id DESC LIMIT 1",
+    [user.id],
     (err, data) => {
       if (err) {
         console.error(err);
@@ -271,6 +268,100 @@ app.get("/user-fullname", (req, res) => {
   );
 });
 
+app.get("/user-fullname", authenticateToken, (req, res) => {
+  const { user } = req;
+
+  db.get(
+    "SELECT firstname || ' ' || lastname AS fullName FROM Users WHERE id = ?",[user.id],
+    (err, data) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Error retrieving user full name");
+      }
+      res.status(200).json(data);
+    }
+  );
+});
+
+app.get("/users", (req, res) => {
+  const query =
+    'SELECT (firstname || " " || lastname) AS fullname, email FROM Users';
+  db.all(query, [], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    console.log(rows);
+    res.status(200).json(rows);
+  });
+});
+
+// app.get("/exportcsv", (req, res) => {
+//   // Query data from SQLite3 database
+//   const query = `
+
+//   `;
+//   db.all(query, (err, rows) => {
+//     if (err) {
+//       console.error(err);
+//       res.status(500).send("Error retrieving data from database");
+//       return;
+//     }
+//     console.log(rows)
+//     res.json(rows)
+//   });
+// });
+
+app.get("/exportcsv", (req, res) => {
+  // Query data from SQLite3 database
+  const query = `
+      SELECT (Users.firstname || " " || Users.lastname) AS fullname, Attendance.clock_in, Attendance.clock_out
+      FROM Attendance
+      INNER JOIN Users ON Attendance.user_id = Users.id
+  `;
+  db.all(query, (err, rows) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error retrieving data from database");
+      return;
+    }
+
+    // Convert data to CSV format
+    const writer = csvWriter({
+      headers: ["Full Name", "Clock In", "Clock Out", "Duration"],
+    });
+    const filePath = "attendance.csv"; // Name your CSV file
+    writer.pipe(fs.createWriteStream(filePath)); // Pipe data to file
+
+    // Write rows
+    rows.forEach((row) => {
+      const clockIn = moment(row.clock_in);
+      const clockOut = moment(row.clock_out);
+      const duration = moment.duration(clockOut.diff(clockIn)).humanize();
+
+      writer.write([row.fullname, row.clock_in, row.clock_out, duration]);
+    });
+
+    writer.end();
+
+    // Respond with CSV file
+    res.setHeader("Content-Type", "text/csv");
+    res.download(filePath, "attendance.csv", (err) => {
+      if (err) {
+        console.error(err);
+        res.status(500).send("Error sending CSV file");
+      } else {
+        console.log("CSV file sent successfully");
+        // Delete the CSV file after sending
+        fs.unlink(filePath, (err) => {
+          if (err) console.error(err);
+          else console.log("CSV file deleted");
+        });
+      }
+    });
+  });
+});
+
 // db.run("DELETE FROM Attendance", function (err) {
 //   if (err) {
 //     console.error("Error deleting token:", err.message);
@@ -278,6 +369,72 @@ app.get("/user-fullname", (req, res) => {
 //     console.log("Token deleted from all records successfully.");
 //   }
 // });
+
+// let backup = db.backup('destDB')
+// backup.step(-1);
+// backup.finish();
+
+const { google } = require("googleapis");
+
+app.get("/upload", async (req, res) => {
+  try {
+    // const db = new sqlite3.Database("mydatabase.db");
+
+    // Perform database backup
+    const backup = db.backup("db/backup/backup.db");
+    backup.step(-1, async (err) => {
+      if (err) {
+        console.error("Backup failed:", err.message);
+        res.status(500).send("Backup failed");
+        return;
+      }
+
+      console.log("Backup completed successfully!");
+
+      // Google Drive API configuration
+      const auth = new google.auth.GoogleAuth({
+        keyFile: "google-api-key.json",
+        scopes: ["https://www.googleapis.com/auth/drive.file"],
+      });
+
+      const drive = google.drive({ version: "v3", auth });
+
+      try {
+        const fileMetadata = {
+          name: "backup.db", // Change the filename if needed
+          parents: ["1uPWrA3iDKRJyfGHHpXzGEKhH6BX08AMq"], // Change to your desired folder ID
+        };
+
+        const filePath = "db/backup/backup.db"; // Path to your database backup file
+
+        const media = {
+          mimeType: "application/octet-stream",
+          body: fs.createReadStream(filePath),
+        };
+
+        const uploadedFile = await drive.files.create({
+          resource: fileMetadata,
+          media: media,
+          fields: "id",
+        });
+
+        console.log(
+          "File uploaded successfully. File ID:",
+          uploadedFile.data.id
+        );
+        res.status(200).send("File uploaded successfully");
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        res.status(500).send("Error uploading file");
+      }
+    });
+
+    backup.finish();
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send("Error occurred");
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 // import './App.css';
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,8 +8,23 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [users, setUsers] = useState(null);
 
-  console.log({ email, password });
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const result = await axios.get("http://localhost:3000/users");
+        console.log(result?.data);
+        setEmail(result?.data[0].email)
+        setUsers(result?.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   const handleEmail = (e) => {
     setEmail(e.target.value);
   };
@@ -37,7 +52,8 @@ function Login() {
         navigate("/home");
       })
       .catch((error) => {
-        alert("service error");
+        // alert("service error");
+        setErrorMessage("Invalid Password");
         console.log(error);
       });
   };
@@ -63,7 +79,7 @@ function Login() {
         <div className="form" id="login">
           <h1 className="form__title">Login</h1>
           <div className="form__input-group">
-            <input
+            {/* <input
               value={email}
               onChange={handleEmail}
               type="text"
@@ -71,7 +87,23 @@ function Login() {
               autoFocus
               placeholder="Username"
               id="usernameinput"
-            />
+            /> */}
+            <label>
+              <select
+                name="selectUsername"
+                className="form__input"
+                value={email}
+                onChange={handleEmail}
+                autoFocus
+              >
+                {users &&
+                  users.map((user, index) => (
+                    <option value={user.email} key={index}>
+                      {user.fullname}
+                    </option>
+                  ))}
+              </select>
+            </label>
           </div>
           <div className="form__input-group">
             <input
@@ -84,6 +116,7 @@ function Login() {
               id="passwordInput"
             />
             <div className="padding"></div>
+            {errorMessage && <div className="error">{errorMessage}</div>}
             <button
               className="form__button"
               id="loginButton"
