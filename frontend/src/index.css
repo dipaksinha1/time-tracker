@@ -192,6 +192,17 @@ body {
   transition: background 0.2s border-color 0.2s;
 }
 
+#passwordInput {
+  -webkit-text-security: disc;
+  -moz-text-security: circle;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .form__input:focus {
   border-color: var(--color-primary);
   background: #fff;
@@ -218,8 +229,8 @@ body {
   padding-bottom: 10px;
 }
 
-.error{
+.error {
   color: red;
-    font-size: 1.5rem;
-    margin-bottom: 2rem;
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
 }

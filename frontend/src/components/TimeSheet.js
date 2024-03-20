@@ -34,28 +34,34 @@ const TimeSheet = ({ userAttendance }) => {
   console.log(userAttendance);
 
   return userAttendance.length === 0 ? (
-    <h1 style={{textAlign:'center',marginTop:'4rem'}}>SORRY... No Data Found</h1>
+    <h1 style={{ textAlign: "center", marginTop: "4rem" }}>
+      SORRY... No Data Found
+    </h1>
   ) : (
-    <table>
-      <thead>
-        <tr>
-          <th>S. No.</th>
-          <th>Name</th>
-          <th>Clock In</th>
-          <th>Clock Out</th>
-        </tr>
-      </thead>
-      <tbody>
-        {userAttendance.map((record, index) => (
-          <tr key={index}>
-            <td>{record.id}</td>
-            <td>{userFullname}</td>
-            <td>{formatTime(record.clock_in)}</td>
-            <td>{record.clock_out ? formatTime(record.clock_out) : "----"}</td>
+    <>
+      <table>
+        <thead>
+          <tr>
+            <th>S. No.</th>
+            <th>Name</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {userAttendance.map((record, index) => (
+            <tr key={index}>
+              <td>{record.id}</td>
+              <td>{userFullname}</td>
+              <td>{formatTime(record.clock_in)}</td>
+              <td>
+                {record.clock_out ? formatTime(record.clock_out) : "----"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
   );
 };
 

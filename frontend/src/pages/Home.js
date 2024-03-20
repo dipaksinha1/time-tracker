@@ -27,6 +27,9 @@ const Home = () => {
           }
         );
 
+        console.log(response);
+        console.log(response.data);
+
         if (response.data.clock_out === null) {
           const providedTimestamp = response.data.clock_in;
           const providedDate = new Date(providedTimestamp);
@@ -70,6 +73,7 @@ const Home = () => {
     setIsRunning(true);
     setTime(timeDifferenceInSeconds);
     intervalRef.current = setInterval(() => {
+      console.log("tick tick ...");
       setTime((prevTime) => prevTime + 1);
     }, 1000);
   };
@@ -84,6 +88,7 @@ const Home = () => {
       clearInterval(intervalRef.current);
     } else {
       intervalRef.current = setInterval(() => {
+        console.log("tick tick ...");
         setTime((prevTime) => prevTime + 1);
       }, 1000);
     }

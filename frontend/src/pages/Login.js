@@ -8,7 +8,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [users, setUsers] = useState(null);
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -74,7 +74,7 @@ function Login() {
     //   <br />
     //   <button onClick={handleApi}>Login</button>
     // </div>
-    <div className="login">
+    users.length===0?<h1>Loading..</h1>:<div className="login">
       <div className="container">
         <div className="form" id="login">
           <h1 className="form__title">Login</h1>
@@ -107,13 +107,14 @@ function Login() {
           </div>
           <div className="form__input-group">
             <input
-              type="password"
+              type="number"
               value={password}
               onChange={handlePassword}
               className="form__input"
               autoFocus
-              placeholder="Password"
+              placeholder="PIN"
               id="passwordInput"
+              pattern="[0-9]*"
             />
             <div className="padding"></div>
             {errorMessage && <div className="error">{errorMessage}</div>}

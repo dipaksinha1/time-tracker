@@ -187,6 +187,18 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// app.get("/verify-token", authenticateToken, (req, res) => {
+//   const { user } = req;
+//   db.get("SELECT id FROM Users WHERE token = ?", [user.id], (err, row) => {
+//     if (err) return res.status(500).send("Error verifying token");
+//     else if (!row) return res.status(401).send("Invalid token");
+//     else {
+//       if(row.length===)
+//       return res.status(200).send("Token is valid");
+//     }
+//   });
+// });
+
 //add-clock in only if last record was clock out or 1st one
 app.post("/clock-in", authenticateToken, (req, res) => {
   const { user } = req;
@@ -230,7 +242,7 @@ app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
   console.log(user.id);
   db.all(
-    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
+    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 5",
     [user.id],
     (err, rows) => {
       if (err) {
@@ -254,9 +266,9 @@ app.get("/get-all", (req, res) => {
 
 app.get("/last-attendance", authenticateToken, (req, res) => {
   const { user } = req;
-
+//if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
   db.get(
-    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = DATE('now', 'localtime') ORDER BY id DESC LIMIT 1",
+    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 1",
     [user.id],
     (err, data) => {
       if (err) {
@@ -272,7 +284,8 @@ app.get("/user-fullname", authenticateToken, (req, res) => {
   const { user } = req;
 
   db.get(
-    "SELECT firstname || ' ' || lastname AS fullName FROM Users WHERE id = ?",[user.id],
+    "SELECT firstname || ' ' || lastname AS fullName FROM Users WHERE id = ?",
+    [user.id],
     (err, data) => {
       if (err) {
         console.error(err);
@@ -326,12 +339,10 @@ app.get("/exportcsv", (req, res) => {
       return;
     }
 
-    // Convert data to CSV format
-    const writer = csvWriter({
-      headers: ["Full Name", "Clock In", "Clock Out", "Duration"],
-    });
-    const filePath = "attendance.csv"; // Name your CSV file
-    writer.pipe(fs.createWriteStream(filePath)); // Pipe data to file
+    // rows.length===0
+
+    const csvData = [];
+    csvData.push(["Full Name", "Clock In", "Clock Out", "Duration"]);
 
     // Write rows
     rows.forEach((row) => {
@@ -339,26 +350,30 @@ app.get("/exportcsv", (req, res) => {
       const clockOut = moment(row.clock_out);
       const duration = moment.duration(clockOut.diff(clockIn)).humanize();
 
-      writer.write([row.fullname, row.clock_in, row.clock_out, duration]);
+      csvData.push([row.fullname, row.clock_in, row.clock_out, duration]);
     });
 
-    writer.end();
-
-    // Respond with CSV file
+    // Set headers for CSV download
     res.setHeader("Content-Type", "text/csv");
-    res.download(filePath, "attendance.csv", (err) => {
-      if (err) {
-        console.error(err);
-        res.status(500).send("Error sending CSV file");
-      } else {
-        console.log("CSV file sent successfully");
-        // Delete the CSV file after sending
-        fs.unlink(filePath, (err) => {
-          if (err) console.error(err);
-          else console.log("CSV file deleted");
-        });
-      }
-    });
+    res.setHeader("Content-Disposition", "attachment; filename=data.csv");
+
+    // Build the CSV string
+    const csvContent = csvData
+      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .join("\r\n");
+
+    console.log(csvContent);
+
+    res.status(200).send(csvContent);
+
+    // res.download(filePath, "attendance.csv", (err) => {
+    //   if (err) {
+    //     console.error(err);
+    //     res.status(500).send("Error sending CSV file");
+    //   } else {
+    //     console.log("CSV file sent successfully");
+    //   }
+    // });
   });
 });
 
@@ -400,8 +415,23 @@ app.get("/upload", async (req, res) => {
       const drive = google.drive({ version: "v3", auth });
 
       try {
+        var currentdate = new Date();
+        var filename =
+          "Last Sync: " +
+          currentdate.getDate() +
+          "/" +
+          (currentdate.getMonth() + 1) +
+          "/" +
+          currentdate.getFullYear() +
+          " @ " +
+          currentdate.getHours() +
+          ":" +
+          currentdate.getMinutes() +
+          ":" +
+          currentdate.getSeconds();
+
         const fileMetadata = {
-          name: "backup.db", // Change the filename if needed
+          name: filename, // Change the filename if needed
           parents: ["1uPWrA3iDKRJyfGHHpXzGEKhH6BX08AMq"], // Change to your desired folder ID
         };
 
