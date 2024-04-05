@@ -4,4 +4,4 @@ dist/
 frontend/.parcel-cache
 backend/db/
 .env
-google-api-key
+google-api-key.json
