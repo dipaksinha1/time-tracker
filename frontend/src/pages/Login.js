@@ -15,8 +15,8 @@ function Login() {
       try {
         const result = await axios.get("http://localhost:3000/users");
         console.log(result?.data);
-        setEmail(result?.data[0].email)
-        setUsers(result?.data);
+        setEmail(result?.data?.data[0]?.email);
+        setUsers(result?.data?.data);
       } catch (error) {
         console.log(error);
       }
@@ -59,76 +59,56 @@ function Login() {
   };
 
   return (
-    // <div className="App">
-    //   Email :
-    //   <input value={email} onChange={handleEmail} type="text" required /> <br />
-    //   Password :
-    //   <input
-    //     value={password}
-    //     onChange={handlePassword}
-    //     type="password"
-    //     required
-    //   />
-    //   <br />
-    //   {errorMessage && <div>{errorMessage}</div>}
-    //   <br />
-    //   <button onClick={handleApi}>Login</button>
-    // </div>
-    users.length===0?<h1>Loading..</h1>:<div className="login">
-      <div className="container">
-        <div className="form" id="login">
-          <h1 className="form__title">Login</h1>
-          <div className="form__input-group">
-            {/* <input
-              value={email}
-              onChange={handleEmail}
-              type="text"
-              className="form__input"
-              autoFocus
-              placeholder="Username"
-              id="usernameinput"
-            /> */}
-            <label>
-              <select
-                name="selectUsername"
+    users.length === 0 ? (
+      <h1>Loading..</h1>
+    ) : (
+      <div className="login">
+        <div className="container">
+          <div className="form" id="login">
+            <h1 className="form__title">Login</h1>
+            <div className="form__input-group">
+              <label>
+                <select
+                  name="selectUsername"
+                  className="form__input"
+                  value={email}
+                  onChange={handleEmail}
+                  autoFocus
+                >
+                  {users &&
+                    users.map((user, index) => (
+                      <option value={user.email} key={index}>
+                        {user.fullname}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+            <div className="form__input-group">
+              <input
+                type="number"
+                value={password}
+                onChange={handlePassword}
                 className="form__input"
-                value={email}
-                onChange={handleEmail}
                 autoFocus
+                placeholder="PIN"
+                id="passwordInput"
+                pattern="[0-9]*"
+              />
+              <div className="padding"></div>
+              {errorMessage && <div className="error">{errorMessage}</div>}
+              <button
+                className="form__button"
+                id="loginButton"
+                onClick={handleApi}
               >
-                {users &&
-                  users.map((user, index) => (
-                    <option value={user.email} key={index}>
-                      {user.fullname}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          </div>
-          <div className="form__input-group">
-            <input
-              type="number"
-              value={password}
-              onChange={handlePassword}
-              className="form__input"
-              autoFocus
-              placeholder="PIN"
-              id="passwordInput"
-              pattern="[0-9]*"
-            />
-            <div className="padding"></div>
-            {errorMessage && <div className="error">{errorMessage}</div>}
-            <button
-              className="form__button"
-              id="loginButton"
-              onClick={handleApi}
-            >
-              Login
-            </button>
+                Login
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    )
   );
 }
 

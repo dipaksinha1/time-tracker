@@ -2,12 +2,20 @@ import React, { useEffect, useState, useRef } from "react";
 import TimeSheet from "./../components/TimeSheet";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import Webcam from "react-webcam";
 
 const Home = () => {
+  const videoConstraints = {
+    width: 1280,
+    height: 720,
+    facingMode: "user",
+  };
+
   const navigate = useNavigate();
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [userAttendance, setUserAttendance] = useState([]);
+  const [userPhoto, setUserPhoto] = useState(null);
   const intervalRef = useRef(null);
 
   useEffect(() => {
@@ -28,9 +36,9 @@ const Home = () => {
         );
 
         console.log(response);
-        console.log(response.data);
+        console.log(response.data.data);
 
-        if (response.data.clock_out === null) {
+        if (response.data.data.clock_out === null) {
           const providedTimestamp = response.data.clock_in;
           const providedDate = new Date(providedTimestamp);
           const currentDate = new Date();
@@ -60,7 +68,7 @@ const Home = () => {
             },
           }
         );
-        setUserAttendance(result?.data?.attendance_records);
+        setUserAttendance(result?.data?.data);
       } catch (error) {
         console.log(error);
       }
@@ -79,8 +87,10 @@ const Home = () => {
   };
 
   const handleStartStop = () => {
-    setIsRunning((prevState) => !prevState);
+    console.log(userPhoto);
+    if (userPhoto === null) return;
 
+    setIsRunning((prevState) => !prevState);
     fetchData();
 
     if (isRunning) {
@@ -102,7 +112,7 @@ const Home = () => {
     try {
       const result = await axios.post(
         apiUrl,
-        { timestamp: new Date().toISOString() },
+        { clientTimestamp: new Date().toISOString(), image: userPhoto },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -161,15 +171,68 @@ const Home = () => {
       </div>
       <h1 className="header">Clock In/Out</h1>
       <div className="current-date">{formattedFullDate}(Today)</div>
-      <div className="circle">
-        <div className="current-status">Total Hours</div>
-        <div className="time">{formatTime(time)}</div>
+      {/* <div className="circle"> */}
+      <div className="video">
+        {userPhoto ? (
+          <>
+            <img src={userPhoto} />
+            <button
+              className="capture-button"
+              onClick={() => {
+                setUserPhoto(null);
+              }}
+            >
+              Click Again
+            </button>
+          </>
+        ) : (
+          <Webcam
+            audio={false}
+            height={250}
+            screenshotFormat="image/jpeg"
+            width={250}
+            videoConstraints={videoConstraints}
+            className="circle"
+          >
+            {({ getScreenshot }) => (
+              <button
+                className="capture-button"
+                onClick={() => {
+                  const imageSrc = getScreenshot();
+                  setUserPhoto(imageSrc);
+                }}
+              >
+                Capture photo
+              </button>
+            )}
+          </Webcam>
+        )}
+        <br />
+        <h1>Please provide a photo that includes your face.</h1>
       </div>
-      <div className="clock-button" onClick={handleStartStop}>
-        <button>{isRunning ? "Clock Out" : "Clock In"}</button>
+      {/* </div> */}
+      <div className="current-status">Total Hours</div>
+      <div className="time">{formatTime(time)}</div>
+      <div
+        className={`clock-button ${userPhoto ? "" : "clock-button-disabled"}`}
+      >
+        <button
+          disabled={userPhoto ? false : true}
+          onClick={() => {
+            handleStartStop();
+          }}
+        >
+          {isRunning ? "Clock Out" : "Clock In"}
+        </button>
       </div>
+      {!userPhoto && (
+        <h1 className="caution">
+          To Enable clock in/out button please click your photo
+        </h1>
+      )}
       <h1 className="recent-punches">RECENT PUNCHES</h1>
       <h1 className="date">{formattedPartialDate}</h1>
+
       <MemoizedTimeSheet userAttendance={userAttendance} />
     </div>
   );

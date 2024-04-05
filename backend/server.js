@@ -7,11 +7,11 @@ const cors = require("cors");
 const fs = require("fs");
 const csvWriter = require("csv-write-stream");
 const moment = require("moment");
-
+require("dotenv").config();
+console.log(process.env.S3_BUCKET);
 const app = express();
 const PORT = process.env.PORT || 3000;
-const secretKey =
-  "026ac46d4fdee9633aba8e8506aff802d4c898afe253de91081d6a695edab0ba"; //Put this in env file
+const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
 
 // Create SQLite database connection and specify disk storage
@@ -49,7 +49,7 @@ db.serialize(() => {
     "CREATE TABLE IF NOT EXISTS Users (id INTEGER PRIMARY KEY, firstname TEXT NOT NULL, lastname TEXT NOT NULL, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, token TEXT UNIQUE)"
   );
   db.run(
-    "CREATE TABLE IF NOT EXISTS Attendance (id INTEGER PRIMARY KEY, user_id INTEGER, clock_in TIMESTAMP NOT NULL, clock_out TIMESTAMP, FOREIGN KEY(user_id) REFERENCES Users(id))"
+    "CREATE TABLE IF NOT EXISTS Attendance (id INTEGER PRIMARY KEY, user_id INTEGER, clock_in TIMESTAMP NOT NULL, clock_out TIMESTAMP, image1 BLOB NOT NULL, image2 BLOB, FOREIGN KEY(user_id) REFERENCES Users(id))"
   );
 });
 
@@ -60,11 +60,15 @@ app.post("/register", async (req, res) => {
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error registering user");
+        return res
+          .status(500)
+          .json({ success: false, message: "Error registering user" });
       }
       if (row) {
         // Email already exists
-        return res.status(400).send("Email already exists");
+        return res
+          .status(400)
+          .json({ success: false, message: "Email already exists" });
       }
       // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -75,15 +79,19 @@ app.post("/register", async (req, res) => {
         (err) => {
           if (err) {
             console.error(err);
-            return res.status(500).send("Error registering user");
+            return res
+              .status(500)
+              .json({ success: false, message: "Error registering user" });
           }
-          res.status(201).send("User registered successfully");
+          res
+            .status(201)
+            .json({ success: true, message: "User registered successfully" });
         }
       );
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Error registering user");
+    res.status(500).json({ success: false, message: "Error registering user" });
   }
 });
 
@@ -94,15 +102,21 @@ app.post("/login", async (req, res) => {
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error logging in");
+        return res
+          .status(500)
+          .json({ success: false, message: "Error logging in" });
       }
       if (!row) {
-        return res.status(401).send("Invalid email or password");
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid email or password" });
       }
       // Compare passwords
       const isValidPassword = await bcrypt.compare(password, row.password_hash);
       if (!isValidPassword) {
-        return res.status(401).send("Invalid email or password");
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid email or password" });
       }
       // Generate token
       const token = jwt.sign(row, secretKey);
@@ -116,9 +130,11 @@ app.post("/login", async (req, res) => {
           (err) => {
             if (err) {
               console.error(err);
-              return res.status(500).send("Error logging in");
+              return res
+                .status(500)
+                .json({ success: false, message: "Error logging in" });
             }
-            res.status(200).json({ token });
+            res.status(200).json({ success: true, token });
           }
         );
       } else {
@@ -129,16 +145,18 @@ app.post("/login", async (req, res) => {
           (err) => {
             if (err) {
               console.error(err);
-              return res.status(500).send("Error logging in");
+              return res
+                .status(500)
+                .json({ success: false, message: "Error logging in" });
             }
-            res.status(200).json({ token });
+            res.status(200).json({ success: true, token });
           }
         );
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Error logging in");
+    res.status(500).json({ success: false, message: "Error logging in" });
   }
 });
 
@@ -146,30 +164,38 @@ app.get("/logout", (req, res) => {
   const authorizationHeader = req.headers.authorization;
 
   if (!authorizationHeader) {
-    return res.status(401).send("Authorization header is missing");
+    return res
+      .status(401)
+      .json({ success: false, message: "Authorization header is missing" });
   }
 
   const token = req.headers.authorization.split(" ")[1];
 
   if (!token) {
-    return res.status(401).send("Invalid token");
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 
   db.get("SELECT * FROM Users WHERE token = ?", [token], (err, user) => {
     if (err) {
       console.error(err);
-      return res.status(500).send("Error logging out");
+      return res
+        .status(500)
+        .json({ success: false, message: "Error logging out" });
     }
     if (!user) {
-      return res.status(401).send("Invalid token");
+      return res.status(401).json({ success: false, message: "Invalid token" });
     }
 
     db.run("UPDATE Users SET token = NULL WHERE token = ?", [token], (err) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error logging out");
+        return res
+          .status(500)
+          .json({ success: false, message: "Error logging out" });
       }
-      res.status(200).send("User logged out successfully");
+      res
+        .status(200)
+        .json({ success: true, message: "User logged out successfully" });
     });
   });
 });
@@ -178,66 +204,205 @@ app.get("/logout", (req, res) => {
 function authenticateToken(req, res, next) {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-  if (token == null) return res.sendStatus(401);
+  if (token == null)
+    return res.status(401).json({
+      success: false,
+      message: "Token Not Found",
+    });
 
   jwt.verify(token, secretKey, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err)
+      return res
+        .status(403)
+        .json({ success: false, message: "Token Not Verified" });
     req.user = user;
     next();
   });
 }
 
-// app.get("/verify-token", authenticateToken, (req, res) => {
-//   const { user } = req;
-//   db.get("SELECT id FROM Users WHERE token = ?", [user.id], (err, row) => {
-//     if (err) return res.status(500).send("Error verifying token");
-//     else if (!row) return res.status(401).send("Invalid token");
-//     else {
-//       if(row.length===)
-//       return res.status(200).send("Token is valid");
-//     }
-//   });
-// });
+app.get("/verify-token", authenticateToken, (req, res) => {
+  const { user } = req;
+  db.get("SELECT id FROM Users WHERE token = ?", [user.id], (err, row) => {
+    if (err) {
+      console.error("Error verifying token:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error verifying token" });
+    }
+    if (!row) {
+      return res.status(401).json({ success: false, message: "Invalid token" });
+    }
+    return res.status(200).json({ success: true, message: "Token is valid" });
+  });
+});
 
 //add-clock in only if last record was clock out or 1st one
 app.post("/clock-in", authenticateToken, (req, res) => {
   const { user } = req;
-  const clientTimestamp = req.body.timestamp; //add function to check time difference of 5-10 seconds
+  const { clientTimestamp, image } = req.body;
+
+  // Validate clientTimestamp and image
+  if (!clientTimestamp || !image) {
+    return res
+      .status(400)
+      .json({ error: "clientTimestamp and image are required." });
+  }
+  if (typeof clientTimestamp !== "string" || !isValidISODate(clientTimestamp)) {
+    return res
+      .status(400)
+      .json({ error: "clientTimestamp must be a valid ISO date string." });
+  }
+
+  // Function to validate ISO date format
+  function isValidISODate(dateString) {
+    return new Date(dateString).toISOString() === dateString;
+  }
+
   const currentTime = new Date().toISOString();
-  db.run(
-    "INSERT INTO Attendance (user_id, clock_in) VALUES (?, ?)",
-    [user.id, currentTime],
-    (err) => {
+
+  // Check the time difference between the server and the client
+  const serverTime = new Date(currentTime).getTime();
+  const clientTime = new Date(clientTimestamp).getTime();
+  const timeDifferenceSeconds = Math.abs(serverTime - clientTime) / 1000;
+  console.log(timeDifferenceSeconds);
+  // Check if the time difference is within the allowed range (10 seconds)
+  const allowedTimeDifference = 10; // Adjust as needed
+  if (timeDifferenceSeconds > allowedTimeDifference) {
+    return res.status(400).json({
+      success: false,
+      error:
+        "Time difference between client and server is not within the allowed range of 10 seconds.",
+    });
+  }
+
+  // Continue with clock-in process
+  // Check if the user has any existing attendance records
+  db.get(
+    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+    [user.id],
+    (err, row) => {
       if (err) {
-        console.error(err);
-        return res.status(500).send("Error clocking in");
+        console.error("Error querying database:", err);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal Server Error" });
       }
-      res.status(200).send("Clock-in successful");
+
+      // If there are no existing attendance records for the user, or the last record was a clock-out
+      if (!row || row.clock_out) {
+        // Proceed with clocking in
+        const clockInTime = currentTime;
+        // Insert the new attendance record into the database
+        db.run(
+          "INSERT INTO Attendance (user_id, clock_in, image1) VALUES (?, ?, ?)",
+          [user.id, clockInTime, image],
+          (err) => {
+            if (err) {
+              console.error("Error inserting attendance record:", err);
+              return res
+                .status(500)
+                .json({ success: false, error: "Failed to clock in" });
+            }
+            return res
+              .status(200)
+              .json({ success: true, message: "Clock-in successful" });
+          }
+        );
+      } else {
+        // User already clocked in or no clock-out record found
+        return res.status(400).json({
+          success: false,
+          error: "Cannot clock in, last record was not clocked out",
+        });
+      }
     }
   );
 });
 
-//add-clock out only if last record was clock in
 app.post("/clock-out", authenticateToken, (req, res) => {
   const { user } = req;
-  console.log(user);
-  const clientTimestamp = req.body.timestamp; //add function to check time difference of 5-10 seconds
-  console.log(clientTimestamp);
+  const { clientTimestamp, image } = req.body;
+
+  // Validate clientTimestamp and image
+  if (!clientTimestamp || !image) {
+    return res
+      .status(400)
+      .json({ error: "clientTimestamp and image are required." });
+  }
+  if (typeof clientTimestamp !== "string" || !isValidISODate(clientTimestamp)) {
+    return res
+      .status(400)
+      .json({ error: "clientTimestamp must be a valid ISO date string." });
+  }
+
+  // Function to validate ISO date format
+  function isValidISODate(dateString) {
+    return new Date(dateString).toISOString() === dateString;
+  }
+
   const currentTime = new Date().toISOString();
-  db.run(
-    "UPDATE Attendance SET clock_out = ? WHERE user_id = ? AND clock_out IS NULL",
-    [currentTime, user.id],
-    (err) => {
+
+  // Check the time difference between the server and the client
+  const serverTime = new Date(currentTime).getTime();
+  const clientTime = new Date(clientTimestamp).getTime();
+  const timeDifferenceSeconds = Math.abs(serverTime - clientTime) / 1000;
+
+  // Check if the time difference is within the allowed range (10 seconds)
+  const allowedTimeDifference = 10; // Adjust as needed
+  if (timeDifferenceSeconds > allowedTimeDifference) {
+    return res.status(400).json({
+      success: false,
+      error:
+        "Time difference between client and server is not within the allowed range of 10 seconds.",
+    });
+  }
+
+  // Continue with clock-out process
+  // Check if the user has an existing clock-in record
+  db.get(
+    "SELECT * FROM Attendance WHERE user_id = ? AND clock_out IS NULL ORDER BY id DESC LIMIT 1",
+    [user.id],
+    (err, row) => {
       if (err) {
-        console.error(err);
-        return res.status(500).send("Error clocking out");
+        console.error("Error querying database:", err);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal Server Error" });
       }
-      res.status(200).send("Clock-out successful");
+
+      // If there's no existing clock-in record
+      if (!row) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot clock out, no existing clock-in record found",
+        });
+      }
+
+      // Proceed with clocking out
+      const clockOutTime = currentTime;
+      const attendanceId = row.id;
+      // Update the clock-out time and image for the last clock-in record
+      db.run(
+        "UPDATE Attendance SET clock_out = ?, image2 = ? WHERE id = ?",
+        [clockOutTime, image, attendanceId],
+        (err) => {
+          if (err) {
+            console.error("Error updating attendance record:", err);
+            return res
+              .status(500)
+              .json({ success: false, error: "Failed to clock out" });
+          }
+          return res
+            .status(200)
+            .json({ success: true, message: "Clock-out successful" });
+        }
+      );
     }
   );
 });
 
 // "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
+//sellect only those filds which are needed
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
   console.log(user.id);
@@ -247,9 +412,12 @@ app.get("/attendance-records", authenticateToken, (req, res) => {
     (err, rows) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error retrieving attendance records");
+        return res.status(500).json({
+          success: false,
+          message: "Error retrieving attendance records",
+        });
       }
-      res.status(200).json({ attendance_records: rows });
+      res.status(200).json({ success: true, data: rows });
     }
   );
 });
@@ -258,24 +426,30 @@ app.get("/get-all", (req, res) => {
   db.all("SELECT * FROM Users", (err, data) => {
     if (err) {
       console.error(err);
-      return res.status(500).send("Error retrieving attendance records");
+      return res.status(500).json({
+        success: true,
+        message: "Error retrieving attendance records",
+      });
     }
-    res.status(200).json(data);
+    res.status(200).json({ success: true, data });
   });
 });
 
 app.get("/last-attendance", authenticateToken, (req, res) => {
   const { user } = req;
-//if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
+  //if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
   db.get(
     "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 1",
     [user.id],
     (err, data) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error retrieving attendance records");
+        return res.status(500).send({
+          success: false,
+          message: "Error retrieving attendance records",
+        });
       }
-      res.status(200).json(data);
+      res.status(200).json({ success: true, data });
     }
   );
 });
@@ -289,9 +463,11 @@ app.get("/user-fullname", authenticateToken, (req, res) => {
     (err, data) => {
       if (err) {
         console.error(err);
-        return res.status(500).send("Error retrieving user full name");
+        return res
+          .status(500)
+          .json({ success: false, message: "Error retrieving user full name" });
       }
-      res.status(200).json(data);
+      res.status(200).json({ success: true, data });
     }
   );
 });
@@ -301,79 +477,89 @@ app.get("/users", (req, res) => {
     'SELECT (firstname || " " || lastname) AS fullname, email FROM Users';
   db.all(query, [], (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ success: false, message: err.message });
     }
 
     console.log(rows);
-    res.status(200).json(rows);
+    res.status(200).json({
+      success: true,
+      data: rows,
+    });
   });
 });
 
-// app.get("/exportcsv", (req, res) => {
-//   // Query data from SQLite3 database
-//   const query = `
-
-//   `;
-//   db.all(query, (err, rows) => {
-//     if (err) {
-//       console.error(err);
-//       res.status(500).send("Error retrieving data from database");
-//       return;
-//     }
-//     console.log(rows)
-//     res.json(rows)
-//   });
-// });
-
-app.get("/exportcsv", (req, res) => {
+app.get("/exportcsv", async (req, res) => {
   // Query data from SQLite3 database
   const query = `
-      SELECT (Users.firstname || " " || Users.lastname) AS fullname, Attendance.clock_in, Attendance.clock_out
+      SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
+             Attendance.clock_in, 
+             Attendance.clock_out, 
+             Attendance.image1,
+             Attendance.image2
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
   `;
-  db.all(query, (err, rows) => {
+  db.all(query, async (err, rows) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving data from database");
       return;
     }
 
-    // rows.length===0
-
-    const csvData = [];
-    csvData.push(["Full Name", "Clock In", "Clock Out", "Duration"]);
+    // Prepare HTML content
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Attendance Data</title>
+      </head>
+      <body>
+        <h1>Attendance Data</h1>
+        <table>
+          <tr>
+            <th>Full Name</th>
+            <th>Clock In</th>
+            <th>Clock Out</th>
+            <th>Image 1</th>
+            <th>Image 2</th>
+          </tr>
+    `;
 
     // Write rows
-    rows.forEach((row) => {
+    for (const row of rows) {
       const clockIn = moment(row.clock_in);
       const clockOut = moment(row.clock_out);
       const duration = moment.duration(clockOut.diff(clockIn)).humanize();
 
-      csvData.push([row.fullname, row.clock_in, row.clock_out, duration]);
-    });
+      // Base64-encoded images from the database
+      const base64Image1 = row.image1;
+      const base64Image2 = row.image2;
 
-    // Set headers for CSV download
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", "attachment; filename=data.csv");
+      // Include Base64-encoded images in HTML
+      htmlContent += `
+        <tr>
+          <td>${row.fullname}</td>
+          <td>${row.clock_in}</td>
+          <td>${row.clock_out}</td>
+          <td><img src="${base64Image1}" width="100" height="100"></td>
+          <td><img src="${base64Image2}" width="100" height="100"></td>
+        </tr>
+      `;
+    }
 
-    // Build the CSV string
-    const csvContent = csvData
-      .map((row) => row.map((field) => `"${field}"`).join(","))
-      .join("\r\n");
+    // Close HTML content
+    htmlContent += `
+        </table>
+      </body>
+      </html>
+    `;
 
-    console.log(csvContent);
+    // Set headers for HTML download
+    res.setHeader("Content-Type", "text/html");
+    res.setHeader("Content-Disposition", "attachment; filename=data.html");
 
-    res.status(200).send(csvContent);
-
-    // res.download(filePath, "attendance.csv", (err) => {
-    //   if (err) {
-    //     console.error(err);
-    //     res.status(500).send("Error sending CSV file");
-    //   } else {
-    //     console.log("CSV file sent successfully");
-    //   }
-    // });
+    // Send HTML response
+    res.status(200).send(htmlContent);
   });
 });
 

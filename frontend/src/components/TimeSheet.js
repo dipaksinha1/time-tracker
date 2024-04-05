@@ -22,7 +22,7 @@ const TimeSheet = ({ userAttendance }) => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         });
-        setUserFullname(result?.data?.fullName);
+        setUserFullname(result?.data?.data?.fullName);
       } catch (error) {
         console.log(error);
       }
