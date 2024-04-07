@@ -11,6 +11,7 @@ require("dotenv").config();
 console.log(process.env.S3_BUCKET);
 const app = express();
 const PORT = process.env.PORT || 3000;
+const path = require('path');
 const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
 
@@ -42,6 +43,9 @@ app.use(
     credentials: true,
   })
 );
+
+// Have Node serve the files for our built React app
+app.use(express.static(path.resolve(__dirname, '../frontend/build')));
 
 // Create Users and Attendance table schemas
 db.serialize(() => {
@@ -650,6 +654,11 @@ app.get("/upload", async (req, res) => {
     console.error("Error:", error);
     res.status(500).send("Error occurred");
   }
+});
+
+// All other GET requests not handled before will return our React app
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
 });
 
 app.listen(PORT, () => {
