@@ -14,6 +14,7 @@ const PORT = process.env.PORT || 3000;
 const path = require('path');
 const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
+const bodyParser = require('body-parser');
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
@@ -28,7 +29,8 @@ const db = new sqlite3.Database(
 );
 
 // Middleware to parse JSON requests
-app.use(express.json());
+app.use(bodyParser.json()); app.use(bodyParser.urlencoded({ extended: true }));
+
 
 // app.use(cors({
 //   methods: 'GET,POST,PATCH,DELETE,OPTIONS',
