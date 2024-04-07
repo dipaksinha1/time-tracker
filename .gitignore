@@ -5,3 +5,4 @@ frontend/.parcel-cache
 backend/db/
 .env
 google-api-key.json
+.vercel
