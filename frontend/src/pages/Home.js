@@ -26,14 +26,11 @@ const Home = () => {
       }
 
       try {
-        const response = await axios.get(
-          "http://localhost:3000/last-attendance",
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        const response = await axios.get("/last-attendance", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
 
         console.log(response);
         console.log(response.data.data);
@@ -60,14 +57,11 @@ const Home = () => {
   useEffect(() => {
     const fetchAttendanceData = async () => {
       try {
-        const result = await axios.get(
-          "http://localhost:3000/attendance-records",
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        const result = await axios.get("/attendance-records", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
         setUserAttendance(result?.data?.data);
       } catch (error) {
         console.log(error);
@@ -105,9 +99,7 @@ const Home = () => {
   };
 
   const fetchData = async () => {
-    const apiUrl = isRunning
-      ? "http://localhost:3000/clock-out"
-      : "http://localhost:3000/clock-in";
+    const apiUrl = isRunning ? "/clock-out" : "/clock-in";
 
     try {
       const result = await axios.post(
@@ -148,7 +140,7 @@ const Home = () => {
     clearInterval(intervalRef.current); // Clear the interval before logging out
 
     try {
-      const response = await axios.get("http://localhost:3000/logout", {
+      const response = await axios.get("/logout", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },

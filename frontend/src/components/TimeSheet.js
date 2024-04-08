@@ -17,7 +17,7 @@ const TimeSheet = ({ userAttendance }) => {
   useEffect(() => {
     const fetchUserFullName = async () => {
       try {
-        const result = await axios.get("http://localhost:3000/user-fullname", {
+        const result = await axios.get("/user-fullname", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },

@@ -6,19 +6,21 @@ const crypto = require("crypto");
 const cors = require("cors");
 const fs = require("fs");
 const csvWriter = require("csv-write-stream");
+const path = require("path");
 const moment = require("moment");
-require("dotenv").config();
+require("dotenv").config({ path: path.resolve(__dirname, '../.env') });
 console.log(process.env.S3_BUCKET);
 const app = express();
 const PORT = process.env.PORT || 3000;
-const path = require('path');
 const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
-const bodyParser = require('body-parser');
+const bodyParser = require("body-parser");
+
+const dbPath = path.resolve(__dirname, "db", "sqlite.db");
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
-  "db/sqlite.db",
+  dbPath,
   sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
   (err) => {
     if (err) {
@@ -29,8 +31,8 @@ const db = new sqlite3.Database(
 );
 
 // Middleware to parse JSON requests
-app.use(bodyParser.json()); app.use(bodyParser.urlencoded({ extended: true }));
-
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // app.use(cors({
 //   methods: 'GET,POST,PATCH,DELETE,OPTIONS',
@@ -47,7 +49,7 @@ app.use(
 );
 
 // Have Node serve the files for our built React app
-app.use(express.static(path.resolve(__dirname, '../frontend/dist')));
+app.use(express.static(path.resolve(__dirname, "../frontend/dist")));
 
 // Create Users and Attendance table schemas
 db.serialize(() => {
@@ -659,8 +661,8 @@ app.get("/upload", async (req, res) => {
 });
 
 // All other GET requests not handled before will return our React app
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../frontend/dist', 'index.html'));
+app.get("*", (req, res) => {
+  res.sendFile(path.resolve(__dirname, "../frontend/dist", "index.html"));
 });
 
 app.listen(PORT, () => {

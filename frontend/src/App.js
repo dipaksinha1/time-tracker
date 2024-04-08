@@ -5,6 +5,8 @@ import Home from "./pages/Home";
 import { Routes, Route, BrowserRouter } from "react-router-dom";
 
 const App = () => {
+  console.log('--------------')
+  console.log(process.env.S3_BUCKET)
   return (
     <BrowserRouter>
       <Routes>

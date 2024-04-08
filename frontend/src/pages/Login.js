@@ -13,7 +13,7 @@ function Login() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const result = await axios.get("http://localhost:3000/users");
+        const result = await axios.get("/users");
         console.log(result?.data);
         setEmail(result?.data?.data[0]?.email);
         setUsers(result?.data?.data);
@@ -41,7 +41,7 @@ function Login() {
 
     console.log({ email, password });
     axios
-      .post("http://localhost:3000/login", {
+      .post("/login", {
         email: email,
         password: password,
       })
