@@ -8,13 +8,14 @@ const fs = require("fs");
 const csvWriter = require("csv-write-stream");
 const path = require("path");
 const moment = require("moment");
-require("dotenv").config({ path: path.resolve(__dirname, '../.env') });
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 console.log(process.env.S3_BUCKET);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
 const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser");
 
 const dbPath = path.resolve(__dirname, "db", "sqlite.db");
 
@@ -31,22 +32,11 @@ const db = new sqlite3.Database(
 );
 
 // Middleware to parse JSON requests
+// Middleware setup
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// app.use(cors({
-//   methods: 'GET,POST,PATCH,DELETE,OPTIONS',
-//   optionsSuccessStatus: 200,
-//   origin: 'http://localhost:1234'
-// }));
-// app.options('*', cors());
-
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  })
-);
+app.use(cookieParser());
+app.use(cors({ origin: true, credentials: true }));
 
 // Have Node serve the files for our built React app
 app.use(express.static(path.resolve(__dirname, "../frontend/dist")));
@@ -106,7 +96,9 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
+
   try {
+    // Retrieve user from the database
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
       if (err) {
         console.error(err);
@@ -114,115 +106,79 @@ app.post("/login", async (req, res) => {
           .status(500)
           .json({ success: false, message: "Error logging in" });
       }
+
       if (!row) {
+        // User not found
         return res
           .status(401)
           .json({ success: false, message: "Invalid email or password" });
       }
+
       // Compare passwords
       const isValidPassword = await bcrypt.compare(password, row.password_hash);
       if (!isValidPassword) {
+        // Invalid password
         return res
           .status(401)
           .json({ success: false, message: "Invalid email or password" });
       }
-      // Generate token
-      const token = jwt.sign(row, secretKey);
 
-      // Check if user already has a token
-      if (row.token) {
-        // Update existing token
-        db.run(
-          "UPDATE Users SET token = ? WHERE id = ?",
-          [token, row.id],
-          (err) => {
-            if (err) {
-              console.error(err);
-              return res
-                .status(500)
-                .json({ success: false, message: "Error logging in" });
-            }
-            res.status(200).json({ success: true, token });
-          }
-        );
-      } else {
-        // Insert new token
-        db.run(
-          "UPDATE Users SET token = ? WHERE id = ?",
-          [token, row.id],
-          (err) => {
-            if (err) {
-              console.error(err);
-              return res
-                .status(500)
-                .json({ success: false, message: "Error logging in" });
-            }
-            res.status(200).json({ success: true, token });
-          }
-        );
-      }
+      // Generate token
+      const token = jwt.sign(row, secretKey, { expiresIn: 5000 });
+
+      // Set token as HTTP Only cookie
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        maxAge: 500000,
+      });
+
+      // Update or insert token in the database
+      res
+        .status(200)
+        .json({ success: true, message: "successfully logged in" });
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: "Error logging in" });
+    res.status(500).json({ success: false, message: "Error while logging in" });
   }
 });
 
 app.get("/logout", (req, res) => {
-  const authorizationHeader = req.headers.authorization;
-
-  if (!authorizationHeader) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Authorization header is missing" });
-  }
-
-  const token = req.headers.authorization.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({ success: false, message: "Invalid token" });
-  }
-
-  db.get("SELECT * FROM Users WHERE token = ?", [token], (err, user) => {
-    if (err) {
-      console.error(err);
-      return res
-        .status(500)
-        .json({ success: false, message: "Error logging out" });
-    }
-    if (!user) {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    }
-
-    db.run("UPDATE Users SET token = NULL WHERE token = ?", [token], (err) => {
-      if (err) {
-        console.error(err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Error logging out" });
-      }
-      res
-        .status(200)
-        .json({ success: true, message: "User logged out successfully" });
+  try {
+    // Clear token cookie by setting an expired token
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0), // Set expiry date to past to immediately expire the cookie
     });
-  });
+
+    res
+      .status(200)
+      .json({ success: true, message: "User logged out successfully" });
+  } catch (error) {
+    console.error("Error logging out:", error);
+    res.status(500).json({ success: false, message: "Error logging out" });
+  }
 });
 
 // middleware
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (token == null)
+  const token = req.cookies.token;
+  console.log(token);
+  if (!token) {
     return res.status(401).json({
       success: false,
       message: "Token Not Found",
     });
+  }
 
   jwt.verify(token, secretKey, (err, user) => {
-    if (err)
+    if (err) {
       return res
         .status(403)
         .json({ success: false, message: "Token Not Verified" });
+    }
     req.user = user;
     next();
   });
@@ -658,6 +614,11 @@ app.get("/upload", async (req, res) => {
     console.error("Error:", error);
     res.status(500).send("Error occurred");
   }
+});
+
+app.get("/auth-check", authenticateToken, (req, res) => {
+  // If authentication middleware passes, user is authenticated
+  res.status(200).json({ success: true, message: "Authorized user" }); // Send a 200 OK status code
 });
 
 // All other GET requests not handled before will return our React app

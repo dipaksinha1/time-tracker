@@ -48,7 +48,6 @@ function Login() {
       .then((result) => {
         console.log(result.data);
         // alert("success");
-        localStorage.setItem("token", result.data.token);
         navigate("/home");
       })
       .catch((error) => {
@@ -58,57 +57,55 @@ function Login() {
       });
   };
 
-  return (
-    users.length === 0 ? (
-      <h1>Loading..</h1>
-    ) : (
-      <div className="login">
-        <div className="container">
-          <div className="form" id="login">
-            <h1 className="form__title">Login</h1>
-            <div className="form__input-group">
-              <label>
-                <select
-                  name="selectUsername"
-                  className="form__input"
-                  value={email}
-                  onChange={handleEmail}
-                  autoFocus
-                >
-                  {users &&
-                    users.map((user, index) => (
-                      <option value={user.email} key={index}>
-                        {user.fullname}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-            <div className="form__input-group">
-              <input
-                type="number"
-                value={password}
-                onChange={handlePassword}
+  return users.length === 0 ? (
+    <h1>Loading..</h1>
+  ) : (
+    <div className="login">
+      <div className="container">
+        <div className="form" id="login">
+          <h1 className="form__title">Login</h1>
+          <div className="form__input-group">
+            <label>
+              <select
+                name="selectUsername"
                 className="form__input"
+                value={email}
+                onChange={handleEmail}
                 autoFocus
-                placeholder="PIN"
-                id="passwordInput"
-                pattern="[0-9]*"
-              />
-              <div className="padding"></div>
-              {errorMessage && <div className="error">{errorMessage}</div>}
-              <button
-                className="form__button"
-                id="loginButton"
-                onClick={handleApi}
               >
-                Login
-              </button>
-            </div>
+                {users &&
+                  users.map((user, index) => (
+                    <option value={user.email} key={index}>
+                      {user.fullname}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </div>
+          <div className="form__input-group">
+            <input
+              type="number"
+              value={password}
+              onChange={handlePassword}
+              className="form__input"
+              autoFocus
+              placeholder="PIN"
+              id="passwordInput"
+              pattern="[0-9]*"
+            />
+            <div className="padding"></div>
+            {errorMessage && <div className="error">{errorMessage}</div>}
+            <button
+              className="form__button"
+              id="loginButton"
+              onClick={handleApi}
+            >
+              Login
+            </button>
           </div>
         </div>
       </div>
-    )
+    </div>
   );
 }
 

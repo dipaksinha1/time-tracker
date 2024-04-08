@@ -18,26 +18,30 @@ const Home = () => {
 
   useEffect(() => {
     const checkTokenAndFetchData = async () => {
-      if (!localStorage.getItem("token")) {
-        navigate("/login");
-        return;
-      }
-
       try {
-        const response = await axios.get("/last-attendance", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        // Send request to server to check if user is authenticated
+        const response = await axios.get("/auth-check");
 
-        console.log(response);
-        console.log(response.data.data);
+        if (response.status === 200) {
+          // User is authenticated, fetch data
+          const fetchDataResponse = await axios.get("/last-attendance");
 
-        if (response.data.data.clock_out === null) {
-          setIsRunning(true);
+          if (fetchDataResponse.status === 200) {
+            const { data } = fetchDataResponse.data;
+            console.log(data);
+
+            if (data.clock_out === null) {
+              setIsRunning(true);
+            }
+          } else {
+            console.error("Failed to fetch data:", fetchDataResponse);
+          }
+        } else {
+          // User is not authenticated, redirect to login page
+          navigate("/login");
         }
       } catch (error) {
-        console.error("error", error);
+        console.error("Error:", error);
       }
     };
 
@@ -47,11 +51,7 @@ const Home = () => {
   useEffect(() => {
     const fetchAttendanceData = async () => {
       try {
-        const result = await axios.get("/attendance-records", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const result = await axios.get("/attendance-records");
         setUserAttendance(result?.data?.data);
       } catch (error) {
         console.log(error);
@@ -61,30 +61,26 @@ const Home = () => {
     fetchAttendanceData(); // Fetch attendance data when user clocks in or out
   }, [isRunning]);
 
+  const fetchData = async () => {
+    const apiUrl = isRunning ? "/clock-out" : "/clock-in";
+
+    try {
+      const result = await axios.post(apiUrl, {
+        clientTimestamp: new Date().toISOString(),
+        image: userPhoto,
+      });
+      console.log(result);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   const handleStartStop = () => {
     console.log(userPhoto);
     if (userPhoto === null) return;
 
     setIsRunning((prevState) => !prevState);
     fetchData();
-  };
-
-  const fetchData = async () => {
-    const apiUrl = isRunning ? "/clock-out" : "/clock-in";
-
-    try {
-      const result = await axios.post(
-        apiUrl,
-        { clientTimestamp: new Date().toISOString(), image: userPhoto },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-    } catch (error) {
-      console.log(error);
-    }
   };
 
   const today = new Date();
@@ -100,14 +96,10 @@ const Home = () => {
 
   const logoutUser = async (e) => {
     try {
-      const response = await axios.get("/logout", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await axios.get("/logout");
       console.log(response.data);
       e.preventDefault(); // keep link from immediately navigating
-      localStorage.clear();
+      // localStorage.clear();
       navigate("/login");
     } catch (error) {
       console.error("error", error);
@@ -188,6 +180,5 @@ const Home = () => {
     </div>
   );
 };
-
 
 export default Home;
