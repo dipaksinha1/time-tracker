@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const cors = require("cors");
 const fs = require("fs");
-const csvWriter = require("csv-write-stream");
+// const csvWriter = require("csv-write-stream");
 const path = require("path");
 const moment = require("moment");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
@@ -16,8 +16,11 @@ const secretKey = process.env.SECRET_KEY; //Put this in env file
 console.log(secretKey);
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
-
+const { google } = require("googleapis");
 const dbPath = path.resolve(__dirname, "db", "sqlite.db");
+const csv = require("csv-writer").createObjectCsvWriter;
+
+console.log(process.argv);
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
@@ -51,8 +54,17 @@ db.serialize(() => {
   );
 });
 
-app.post("/register", async (req, res) => {
+// Validation middleware
+function validateRegistration(req, res, next) {
   const { firstname, lastname, email, password } = req.body;
+
+  if (!firstname || !lastname || !email || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+  next();
+}
+
+app.post("/register", validateRegistration, async (req, res) => {
   try {
     // Check if email already exists
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
@@ -131,7 +143,7 @@ app.post("/login", async (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 500000,
+        maxAge: 5000,
       });
 
       // Update or insert token in the database
@@ -184,22 +196,6 @@ function authenticateToken(req, res, next) {
   });
 }
 
-app.get("/verify-token", authenticateToken, (req, res) => {
-  const { user } = req;
-  db.get("SELECT id FROM Users WHERE token = ?", [user.id], (err, row) => {
-    if (err) {
-      console.error("Error verifying token:", err);
-      return res
-        .status(500)
-        .json({ success: false, message: "Error verifying token" });
-    }
-    if (!row) {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    }
-    return res.status(200).json({ success: true, message: "Token is valid" });
-  });
-});
-
 //add-clock in only if last record was clock out or 1st one
 app.post("/clock-in", authenticateToken, (req, res) => {
   const { user } = req;
@@ -239,11 +235,12 @@ app.post("/clock-in", authenticateToken, (req, res) => {
     });
   }
 
-  // Continue with clock-in process
+  const currentDate = new Date().toISOString().slice(0, 10); // Get the current date in YYYY-MM-DD format
+
   // Check if the user has any existing attendance records
   db.get(
-    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-    [user.id],
+    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = ? ORDER BY id DESC LIMIT 1",
+    [user.id, currentDate],
     (err, row) => {
       if (err) {
         console.error("Error querying database:", err);
@@ -321,11 +318,13 @@ app.post("/clock-out", authenticateToken, (req, res) => {
     });
   }
 
+  const currentDate = new Date().toISOString().slice(0, 10); // Get the current date in YYYY-MM-DD format
+
   // Continue with clock-out process
   // Check if the user has an existing clock-in record
   db.get(
-    "SELECT * FROM Attendance WHERE user_id = ? AND clock_out IS NULL ORDER BY id DESC LIMIT 1",
-    [user.id],
+    "SELECT * FROM Attendance WHERE user_id = ? AND DATE(clock_in) = ? AND clock_out IS NULL ORDER BY id DESC LIMIT 1",
+    [user.id, currentDate],
     (err, row) => {
       if (err) {
         console.error("Error querying database:", err);
@@ -370,9 +369,12 @@ app.post("/clock-out", authenticateToken, (req, res) => {
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
   console.log(user.id);
+
+  const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
+
   db.all(
-    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 5",
-    [user.id],
+    "SELECT * FROM Attendance WHERE user_id = ? AND date(clock_in) = ? ORDER BY id DESC",
+    [user.id, currentDate],
     (err, rows) => {
       if (err) {
         console.error(err);
@@ -387,7 +389,7 @@ app.get("/attendance-records", authenticateToken, (req, res) => {
 });
 
 app.get("/get-all", (req, res) => {
-  db.all("SELECT * FROM Users", (err, data) => {
+  db.all("SELECT user_id,clock_in,clock_out FROM Attendance", (err, data) => {
     if (err) {
       console.error(err);
       return res.status(500).json({
@@ -401,12 +403,14 @@ app.get("/get-all", (req, res) => {
 
 app.get("/last-attendance", authenticateToken, (req, res) => {
   const { user } = req;
+  const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
+
   //if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
   db.get(
-    "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC LIMIT 1",
-    [user.id],
+    "SELECT * FROM Attendance WHERE user_id = ? AND date(clock_in) = ? ORDER BY id DESC LIMIT 1",
+    [user.id, currentDate],
     (err, data) => {
-      if (err) {
+      if (err || !data) {
         console.error(err);
         return res.status(500).send({
           success: false,
@@ -457,11 +461,82 @@ app.get("/exportcsv", async (req, res) => {
   const query = `
       SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
              Attendance.clock_in, 
+             Attendance.clock_out
+      FROM Attendance
+      INNER JOIN Users ON Attendance.user_id = Users.id
+      ORDER BY  DATE(Attendance.clock_in), fullname
+  `;
+  db.all(query, async (err, rows) => {
+    if (err) {
+      console.error(err);
+      res.status(500).send("Error retrieving data from database");
+      return;
+    }
+
+    // Prepare CSV content
+    const csvData = rows.map((row) => {
+      const clockIn = moment(row.clock_in);
+      const clockOut = moment(row.clock_out);
+      let duration;
+
+      if (row.clock_in && row.clock_out)
+        duration = moment.duration(clockOut.diff(clockIn)).humanize();
+      else duration = "NA";
+
+      return {
+        fullname: row.fullname,
+        date: moment(row.clock_in).format("DD/MM/YYYY"),
+        clockIn: moment(row.clock_in).format("hh:mm:ss a"),
+        clockOut: moment(row.clock_out).format("hh:mm:ss a"),
+        duration: duration,
+      };
+    });
+
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const folderName = `Last_Sync_${formattedDate}`;
+
+    // Set path for CSV file
+    const filePath = path.join(__dirname, folderName, "attendance-csv.csv");
+
+    // Create CSV writer
+    const csvWriter = csv({
+      path: filePath, // Set the path for the CSV file
+      header: [
+        { id: "fullname", title: "Full Name" },
+        { id: "date", title: "Date" },
+        { id: "clockIn", title: "Clock In" },
+        { id: "clockOut", title: "Clock Out" },
+        { id: "duration", title: "Duration" },
+      ],
+      fieldDelimiter: ",",
+      encoding: "utf-8",
+    });
+
+    // Write CSV data to file
+    csvWriter
+      .writeRecords(csvData)
+      .then(() => {
+        res.download(filePath); // Download the created CSV file
+      })
+      .catch((error) => {
+        console.error(error);
+        res.status(500).send("Error creating CSV file");
+      });
+  });
+});
+
+app.get("/exporthtml", async (req, res) => {
+  // Query data from SQLite3 database
+  const query = `
+      SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
+             Attendance.clock_in, 
              Attendance.clock_out, 
              Attendance.image1,
              Attendance.image2
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
+      ORDER BY  DATE(Attendance.clock_in), fullname
   `;
   db.all(query, async (err, rows) => {
     if (err) {
@@ -476,14 +551,25 @@ app.get("/exportcsv", async (req, res) => {
       <html>
       <head>
         <title>Attendance Data</title>
+        <style>
+          table {
+            border-collapse: collapse;
+          }
+          th, td {
+            border: 1px solid black;
+            padding: 8px;
+          }
+        </style>
       </head>
       <body>
         <h1>Attendance Data</h1>
         <table>
           <tr>
             <th>Full Name</th>
+            <th>Date</th>
             <th>Clock In</th>
             <th>Clock Out</th>
+            <th>Duration</th>
             <th>Image 1</th>
             <th>Image 2</th>
           </tr>
@@ -493,7 +579,21 @@ app.get("/exportcsv", async (req, res) => {
     for (const row of rows) {
       const clockIn = moment(row.clock_in);
       const clockOut = moment(row.clock_out);
-      const duration = moment.duration(clockOut.diff(clockIn)).humanize();
+      let duration;
+
+      if (row.clock_in && row.clock_out)
+        duration = moment.duration(clockOut.diff(clockIn)).humanize();
+      else duration = "NA";
+
+      const clockInTime = moment(row.clock_in).format("hh:mm:ss a");
+
+      const clockOutTime = moment(row.clock_out).format("hh:mm:ss a");
+
+      // Create a Moment.js object from the timestamp
+      const date = moment(clockIn);
+
+      // Extract the date using the format() function
+      const dateString = date.format("DD/MM/YYYY"); // Format for day, month, and year
 
       // Base64-encoded images from the database
       const base64Image1 = row.image1;
@@ -502,11 +602,13 @@ app.get("/exportcsv", async (req, res) => {
       // Include Base64-encoded images in HTML
       htmlContent += `
         <tr>
-          <td>${row.fullname}</td>
-          <td>${row.clock_in}</td>
-          <td>${row.clock_out}</td>
-          <td><img src="${base64Image1}" width="100" height="100"></td>
-          <td><img src="${base64Image2}" width="100" height="100"></td>
+          <td style="border: 1px solid black; padding: 8px;">${row.fullname}</td>
+          <td style="border: 1px solid black; padding: 8px;">${dateString}</td>
+          <td style="border: 1px solid black; padding: 8px;">${clockInTime}</td>
+          <td style="border: 1px solid black; padding: 8px;">${clockOutTime}</td>
+          <td style="border: 1px solid black; padding: 8px;">${duration}</td>
+          <td style="border: 1px solid black; padding: 8px;"><img src="${base64Image1}" width="100" height="100"></td>
+          <td style="border: 1px solid black; padding: 8px;"><img src="${base64Image2}" width="100" height="100"></td>
         </tr>
       `;
     }
@@ -518,34 +620,33 @@ app.get("/exportcsv", async (req, res) => {
       </html>
     `;
 
-    // Set headers for HTML download
-    res.setHeader("Content-Type", "text/html");
-    res.setHeader("Content-Disposition", "attachment; filename=data.html");
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const folderName = `Last_Sync_${formattedDate}`;
 
-    // Send HTML response
-    res.status(200).send(htmlContent);
+    // Define the file path where you want to save the HTML file
+    const filePath = path.join(__dirname, folderName, "attendance-html.html");
+
+    // Write the HTML content to the file
+    fs.writeFile(filePath, htmlContent, (err) => {
+      if (err) {
+        console.error("Error saving HTML file:", err);
+        res.status(500).send("Error saving HTML file");
+        return;
+      }
+      console.log("HTML file saved successfully");
+
+      // Set headers for HTML download
+      res.setHeader("Content-Type", "text/html");
+      res.setHeader("Content-Disposition", "attachment; filename=data.html");
+
+      res.download(filePath); // Optionally, you can trigger a download of the HTML file
+    });
   });
 });
 
-// db.run("DELETE FROM Attendance", function (err) {
-//   if (err) {
-//     console.error("Error deleting token:", err.message);
-//   } else {
-//     console.log("Token deleted from all records successfully.");
-//   }
-// });
-
-// let backup = db.backup('destDB')
-// backup.step(-1);
-// backup.finish();
-
-const { google } = require("googleapis");
-
 app.get("/upload", async (req, res) => {
   try {
-    // const db = new sqlite3.Database("mydatabase.db");
-
-    // Perform database backup
     const backup = db.backup("db/backup/backup.db");
     backup.step(-1, async (err) => {
       if (err) {
@@ -620,6 +721,112 @@ app.get("/auth-check", authenticateToken, (req, res) => {
   // If authentication middleware passes, user is authenticated
   res.status(200).json({ success: true, message: "Authorized user" }); // Send a 200 OK status code
 });
+
+const axios = require("axios");
+
+// Define the function to call the endpoints
+const backupDaily = async () => {
+  try {
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+
+    const folderName = `Last_Sync_${formattedDate}`;
+    const folderPath = path.join(__dirname, folderName);
+
+    // const folderPath = path.join(__dirname, filename);
+
+    if (!fs.existsSync(folderPath)) {
+      // Create the folder
+      fs.mkdirSync(folderPath);
+    }
+    console.log(folderPath);
+    // Call the /exportcsv endpoint
+    await axios.get(`http://localhost:${PORT}/exportcsv`);
+    console.log("CSV backup completed successfully");
+
+    // Call the /exporthtml endpoint
+    await axios.get(`http://localhost:${PORT}/exporthtml`);
+    console.log("HTML backup completed successfully");
+
+    await uploadToDrive();
+  } catch (error) {
+    console.error("Error during backup:", error.message);
+  }
+};
+// ------
+// backupDaily();
+// ------
+
+async function uploadFilesToDrive(folderName, files, parentFolderId) {
+  try {
+    const auth = new google.auth.GoogleAuth({
+      keyFile: "google-api-key.json",
+      scopes: ["https://www.googleapis.com/auth/drive.file"],
+    });
+
+    const drive = google.drive({ version: "v3", auth });
+
+    // Create the "Last Sync" subfolder inside the "backup" folder
+    const syncFolderMetadata = {
+      name: folderName,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentFolderId],
+    };
+    const createdSyncFolder = await drive.files.create({
+      resource: syncFolderMetadata,
+      fields: "id",
+    });
+    const syncFolderId = createdSyncFolder.data.id;
+    console.log(`"Last Sync" folder created with ID: ${syncFolderId}`);
+
+    // Upload files to the "Last Sync" subfolder
+    for (const file of files) {
+      const fileMetadata = {
+        name: file.name,
+        parents: [syncFolderId],
+      };
+      const media = {
+        mimeType: file.mimeType,
+        body: fs.createReadStream(file.path),
+      };
+      const uploadedFile = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: "id",
+      });
+      console.log(
+        `File "${file.name}" uploaded with ID: ${uploadedFile.data.id}`
+      );
+    }
+
+    console.log("All files uploaded successfully.");
+  } catch (error) {
+    console.error("Error uploading files to Drive:", error);
+  }
+}
+
+async function uploadToDrive() {
+  const currentDate = new Date();
+  const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+  const folderName = `Last_Sync_${formattedDate}`;
+  const parentFolderId = "1UuaylOpxps66HyO3aZ-CxKvnxcuvkMBj"; // Replace with your "backup" folder ID
+
+  const files = [
+    {
+      name: "attendance-csv.csv",
+      path: path.join(__dirname, folderName, "attendance-csv.csv"),
+      mimeType: "text/csv",
+    },
+    {
+      name: "attendance-html.html",
+      path: path.join(__dirname, folderName, "attendance-html.html"),
+      mimeType: "text/html",
+    },
+  ];
+
+  await uploadFilesToDrive(folderName, files, parentFolderId);
+  // await uploadFilesToDrive(folderName,filePath)
+}
 
 // All other GET requests not handled before will return our React app
 app.get("*", (req, res) => {

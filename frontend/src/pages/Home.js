@@ -5,15 +5,8 @@ import axios from "axios";
 import Webcam from "react-webcam";
 
 const Home = () => {
-  const videoConstraints = {
-    width: 1280,
-    height: 720,
-    facingMode: "user",
-  };
-
   const navigate = useNavigate();
   const [isRunning, setIsRunning] = useState(false);
-  const [userAttendance, setUserAttendance] = useState([]);
   const [userPhoto, setUserPhoto] = useState(null);
 
   useEffect(() => {
@@ -41,45 +34,35 @@ const Home = () => {
           navigate("/login");
         }
       } catch (error) {
-        console.error("Error:", error);
+        console.log("Error:", error);
+        navigate("/login");
       }
     };
 
     checkTokenAndFetchData();
   }, [navigate]);
 
-  useEffect(() => {
-    const fetchAttendanceData = async () => {
-      try {
-        const result = await axios.get("/attendance-records");
-        setUserAttendance(result?.data?.data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchAttendanceData(); // Fetch attendance data when user clocks in or out
-  }, [isRunning]);
-
   const fetchData = async () => {
     const apiUrl = isRunning ? "/clock-out" : "/clock-in";
-
     try {
       const result = await axios.post(apiUrl, {
         clientTimestamp: new Date().toISOString(),
         image: userPhoto,
       });
+      if (result?.data?.success) {
+        console.log(result.data.success);
+        setIsRunning((prevState) => !prevState);
+      }
       console.log(result);
     } catch (error) {
       console.log(error);
+      if (error?.response?.status === 401) navigate("/login");
     }
   };
 
   const handleStartStop = () => {
     console.log(userPhoto);
     if (userPhoto === null) return;
-
-    setIsRunning((prevState) => !prevState);
     fetchData();
   };
 
@@ -99,11 +82,16 @@ const Home = () => {
       const response = await axios.get("/logout");
       console.log(response.data);
       e.preventDefault(); // keep link from immediately navigating
-      // localStorage.clear();
       navigate("/login");
     } catch (error) {
       console.error("error", error);
     }
+  };
+
+  const videoConstraints = {
+    width: 1280,
+    height: 720,
+    facingMode: "user",
   };
 
   return (
@@ -176,7 +164,7 @@ const Home = () => {
       <h1 className="recent-punches">RECENT PUNCHES</h1>
       <h1 className="date">{formattedPartialDate}</h1>
 
-      <TimeSheet userAttendance={userAttendance} />
+      <TimeSheet isRunning={isRunning} />
     </div>
   );
 };

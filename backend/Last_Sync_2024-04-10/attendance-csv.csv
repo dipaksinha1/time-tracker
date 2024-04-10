@@ -1,0 +1,59 @@
+Full Name,Date,Clock In,Clock Out,Duration
+John Doe,05/04/2024,11:51:42 pm,11:52:07 pm,2 days
+John Doe,08/04/2024,02:28:34 pm,02:41:02 pm,12 minutes
+John Doe,08/04/2024,02:53:33 pm,02:58:59 pm,5 minutes
+John Doe,08/04/2024,03:02:37 pm,03:02:39 pm,a few seconds
+John Doe,08/04/2024,03:02:40 pm,03:02:41 pm,a few seconds
+John Doe,08/04/2024,03:11:14 pm,03:11:16 pm,a few seconds
+John Doe,08/04/2024,03:11:18 pm,03:11:19 pm,a few seconds
+John Doe,08/04/2024,03:11:21 pm,03:11:22 pm,a few seconds
+John Doe,08/04/2024,03:11:22 pm,03:11:22 pm,a few seconds
+John Doe,08/04/2024,03:11:22 pm,03:11:22 pm,a few seconds
+John Doe,08/04/2024,03:11:22 pm,03:11:23 pm,a few seconds
+John Doe,08/04/2024,03:11:23 pm,03:11:23 pm,a few seconds
+John Doe,08/04/2024,03:11:23 pm,Invalid date,NA
+James Snow,08/04/2024,11:20:05 pm,11:20:06 pm,a few seconds
+James Snow,08/04/2024,11:20:07 pm,11:20:07 pm,a few seconds
+James Snow,08/04/2024,11:20:07 pm,11:20:09 pm,a few seconds
+James Snow,08/04/2024,11:20:10 pm,11:20:12 pm,a few seconds
+James Snow,08/04/2024,11:20:12 pm,11:20:14 pm,a few seconds
+James Snow,10/04/2024,11:23:15 am,11:23:17 am,a few seconds
+James Snow,10/04/2024,11:23:25 am,11:23:26 am,a few seconds
+James Snow,10/04/2024,11:24:03 am,11:24:21 am,a few seconds
+James Snow,10/04/2024,11:24:22 am,11:25:40 am,a minute
+James Snow,10/04/2024,11:27:32 am,11:27:34 am,a few seconds
+James Snow,10/04/2024,11:28:52 am,11:28:54 am,a few seconds
+James Snow,10/04/2024,11:28:55 am,11:28:57 am,a few seconds
+James Snow,10/04/2024,11:31:06 am,11:33:15 am,2 minutes
+James Snow,10/04/2024,11:33:20 am,11:33:21 am,a few seconds
+James Snow,10/04/2024,11:33:24 am,11:33:29 am,a few seconds
+James Snow,10/04/2024,11:33:31 am,11:33:32 am,a few seconds
+James Snow,10/04/2024,11:33:33 am,11:33:34 am,a few seconds
+James Snow,10/04/2024,11:33:35 am,11:33:36 am,a few seconds
+James Snow,10/04/2024,11:33:37 am,11:33:38 am,a few seconds
+James Snow,10/04/2024,11:33:39 am,11:33:40 am,a few seconds
+James Snow,10/04/2024,11:33:41 am,11:33:45 am,a few seconds
+James Snow,10/04/2024,11:33:46 am,11:33:47 am,a few seconds
+James Snow,10/04/2024,11:33:48 am,11:33:49 am,a few seconds
+James Snow,10/04/2024,11:33:49 am,11:33:50 am,a few seconds
+James Snow,10/04/2024,11:33:51 am,11:33:52 am,a few seconds
+James Snow,10/04/2024,11:33:58 am,11:33:59 am,a few seconds
+James Snow,10/04/2024,11:34:00 am,11:34:01 am,a few seconds
+James Snow,10/04/2024,11:34:01 am,11:34:02 am,a few seconds
+James Snow,10/04/2024,11:34:03 am,11:34:04 am,a few seconds
+James Snow,10/04/2024,11:34:04 am,11:34:05 am,a few seconds
+James Snow,10/04/2024,11:34:06 am,11:34:07 am,a few seconds
+James Snow,10/04/2024,11:34:08 am,11:34:09 am,a few seconds
+John Doe,10/04/2024,10:52:00 am,10:52:05 am,a few seconds
+John Doe,10/04/2024,10:52:06 am,10:54:05 am,2 minutes
+John Doe,10/04/2024,10:54:29 am,11:22:40 am,28 minutes
+John Doe,10/04/2024,11:22:46 am,11:22:46 am,a few seconds
+John Doe,10/04/2024,11:22:48 am,11:43:22 am,21 minutes
+John Doe,10/04/2024,11:43:33 am,12:17:23 pm,34 minutes
+John Doe,10/04/2024,12:17:24 pm,12:17:25 pm,a few seconds
+John Doe,10/04/2024,12:17:26 pm,12:17:27 pm,a few seconds
+John Doe,10/04/2024,12:17:28 pm,12:17:29 pm,a few seconds
+John Doe,10/04/2024,12:17:34 pm,12:36:32 pm,19 minutes
+John Doe,10/04/2024,12:36:33 pm,12:36:34 pm,a few seconds
+John Doe,10/04/2024,12:36:36 pm,12:36:37 pm,a few seconds
+John Doe,10/04/2024,12:36:38 pm,12:36:38 pm,a few seconds

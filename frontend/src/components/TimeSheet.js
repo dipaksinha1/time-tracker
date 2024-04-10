@@ -12,8 +12,10 @@ function formatTime(timestamp) {
   return formattedTime;
 }
 
-const TimeSheet = ({ userAttendance }) => {
+const TimeSheet = ({ isRunning }) => {
   const [userFullname, setUserFullname] = useState("");
+  const [userAttendance, setUserAttendance] = useState([]);
+
   useEffect(() => {
     const fetchUserFullName = async () => {
       try {
@@ -23,11 +25,20 @@ const TimeSheet = ({ userAttendance }) => {
         console.log(error);
       }
     };
-
     fetchUserFullName(); // Call the async function immediately
   }, []); // Empty dependency array indicates that this effect runs only once after the component mounts
 
-  console.log(userAttendance);
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        const result = await axios.get("/attendance-records");
+        setUserAttendance(result?.data?.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchAttendanceData(); // Fetch attendance data when user clocks in or out
+  }, [isRunning]);
 
   return userAttendance.length === 0 ? (
     <h1 style={{ textAlign: "center", marginTop: "4rem" }}>
