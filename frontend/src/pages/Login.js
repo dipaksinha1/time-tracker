@@ -84,7 +84,7 @@ function Login() {
           </div>
           <div className="form__input-group">
             <input
-              type="number"
+              type="text"
               value={password}
               onChange={handlePassword}
               className="form__input"

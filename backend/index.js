@@ -7,8 +7,8 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment");
-require("dotenv").config({ path: "../.env"});
-const cron = require('node-cron');
+require("dotenv").config({ path: "../.env" });
+const cron = require("node-cron");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const secretKey = process.env.SECRET_KEY;
@@ -61,6 +61,8 @@ function validateRegistration(req, res, next) {
 }
 
 app.post("/register", validateRegistration, async (req, res) => {
+  const { firstname, lastname, email, password } = req.body;
+
   try {
     // Check if email already exists
     db.get("SELECT * FROM Users WHERE email = ?", [email], async (err, row) => {
@@ -139,7 +141,7 @@ app.post("/login", async (req, res) => {
         httpOnly: true,
         secure: true,
         sameSite: "strict",
-        maxAge: 5000,
+        maxAge: 300000,
       });
 
       // Update or insert token in the database
@@ -644,7 +646,6 @@ app.get("/auth-check", authenticateToken, (req, res) => {
   res.status(200).json({ success: true, message: "Authorized user" }); // Send a 200 OK status code
 });
 
-
 const backupDaily = async () => {
   try {
     const currentDate = new Date();
@@ -721,7 +722,7 @@ async function uploadToDrive() {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
   const folderName = `Last_Sync_${formattedDate}`;
-  const parentFolderId = "1UuaylOpxps66HyO3aZ-CxKvnxcuvkMBj"; // Replace with "backup" folder ID
+  const parentFolderId = process.env.PARENT_FOLDER_ID; // Replace with "backup" folder ID
 
   const files = [
     {
@@ -741,12 +742,12 @@ async function uploadToDrive() {
 
 /**
  * Validates the format of a time string.
- * 
+ *
  * Time format should be in the following format:
  *   - Hours: 1-12 (with optional leading zero)
  *   - Minutes: 00-59
  *   - Period: am or pm (case-insensitive)
- * 
+ *
  * @param {string} time - The time string to validate.
  * @returns {boolean} - True if the time format is valid, false otherwise.
  */
@@ -757,12 +758,12 @@ function validateTimeFormat(time) {
 }
 
 function generateCronSchedule(time) {
-  const [timeStr, period] = time.split(' ');
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const [timeStr, period] = time.split(" ");
+  const [hours, minutes] = timeStr.split(":").map(Number);
   let cronHours = hours;
-  if (period === 'pm' && hours !== 12) {
+  if (period === "pm" && hours !== 12) {
     cronHours += 12;
-  } else if (period === 'am' && hours === 12) {
+  } else if (period === "am" && hours === 12) {
     cronHours = 0;
   }
   const cronSchedule = `${minutes} ${cronHours} * * *`;
@@ -771,21 +772,21 @@ function generateCronSchedule(time) {
 
 // Function to schedule cron job internally
 function scheduleCronJob() {
-  let time = process.env.CRON_TIME || '11:30 pm'; // Get time from environment variable or set default
+  let time = process.env.CRON_TIME || "11:30 pm"; // Get time from environment variable or set default
   time = time.toLowerCase();
 
   if (!validateTimeFormat(time)) {
-    console.error('Invalid time format');
+    console.error("Invalid time format");
     return;
   }
 
   const cronSchedule = generateCronSchedule(time);
   cron.schedule(cronSchedule, () => {
-    console.log('Cron job executed at:', new Date().toISOString());
+    console.log("Cron job executed at:", new Date().toISOString());
     backupDaily();
   });
 
-  console.log('Cron job scheduled successfully');
+  console.log("Cron job scheduled successfully");
 }
 
 // Call the scheduling function when the application starts

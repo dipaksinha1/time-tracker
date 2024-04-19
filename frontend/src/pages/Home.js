@@ -14,30 +14,35 @@ const Home = () => {
       try {
         // Send request to server to check if user is authenticated
         const response = await axios.get("/auth-check");
-
+    
         if (response.status === 200) {
           // User is authenticated, fetch data
-          const fetchDataResponse = await axios.get("/last-attendance");
-
-          if (fetchDataResponse.status === 200) {
-            const { data } = fetchDataResponse.data;
-            console.log(data);
-
-            if (data.clock_out === null) {
-              setIsRunning(true);
+          try {
+            const fetchDataResponse = await axios.get("/last-attendance");
+    
+            if (fetchDataResponse.status === 200) {
+              const { data } = fetchDataResponse.data;
+              console.log(data);
+    
+              if (data.clock_out === null) {
+                setIsRunning(true);
+              }
+            } else {
+              console.error("Failed to fetch data:", fetchDataResponse);
             }
-          } else {
-            console.error("Failed to fetch data:", fetchDataResponse);
+          } catch (fetchError) {
+            console.error("Error fetching data:", fetchError);
           }
         } else {
           // User is not authenticated, redirect to login page
           navigate("/login");
         }
       } catch (error) {
-        console.log("Error:", error);
+        console.error("Error:", error);
         navigate("/login");
       }
     };
+    
 
     checkTokenAndFetchData();
   }, [navigate]);
