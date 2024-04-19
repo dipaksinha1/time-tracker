@@ -15,7 +15,7 @@ To get started with Time Tracker, follow these steps:
 
 ## Usage
 
-Once the installation is complete, you can access the Time Tracker application through your web browser. The default address is usually `http://localhost:3000`.
+Once the installation is complete, you can access the Time Tracker application through your web browser. The default address is `http://localhost:3000`.
 
 ## Features
 
