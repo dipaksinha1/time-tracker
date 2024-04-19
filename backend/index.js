@@ -2,25 +2,21 @@ const express = require("express");
 const sqlite3 = require("sqlite3").verbose();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const cors = require("cors");
+const axios = require("axios");
 const fs = require("fs");
-// const csvWriter = require("csv-write-stream");
 const path = require("path");
 const moment = require("moment");
-require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
-console.log(process.env.S3_BUCKET);
+require("dotenv").config({ path: "../.env"});
+const cron = require('node-cron');
 const app = express();
 const PORT = process.env.PORT || 3000;
-const secretKey = process.env.SECRET_KEY; //Put this in env file
-console.log(secretKey);
+const secretKey = process.env.SECRET_KEY;
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser");
 const { google } = require("googleapis");
 const dbPath = path.resolve(__dirname, "db", "sqlite.db");
 const csv = require("csv-writer").createObjectCsvWriter;
-
-console.log(process.argv);
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
@@ -364,7 +360,6 @@ app.post("/clock-out", authenticateToken, (req, res) => {
   );
 });
 
-// "SELECT * FROM Attendance WHERE user_id = ? ORDER BY clock_in DESC",
 //sellect only those filds which are needed
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
@@ -545,7 +540,6 @@ app.get("/exporthtml", async (req, res) => {
       return;
     }
 
-    // Prepare HTML content
     let htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -645,86 +639,12 @@ app.get("/exporthtml", async (req, res) => {
   });
 });
 
-app.get("/upload", async (req, res) => {
-  try {
-    const backup = db.backup("db/backup/backup.db");
-    backup.step(-1, async (err) => {
-      if (err) {
-        console.error("Backup failed:", err.message);
-        res.status(500).send("Backup failed");
-        return;
-      }
-
-      console.log("Backup completed successfully!");
-
-      // Google Drive API configuration
-      const auth = new google.auth.GoogleAuth({
-        keyFile: "google-api-key.json",
-        scopes: ["https://www.googleapis.com/auth/drive.file"],
-      });
-
-      const drive = google.drive({ version: "v3", auth });
-
-      try {
-        var currentdate = new Date();
-        var filename =
-          "Last Sync: " +
-          currentdate.getDate() +
-          "/" +
-          (currentdate.getMonth() + 1) +
-          "/" +
-          currentdate.getFullYear() +
-          " @ " +
-          currentdate.getHours() +
-          ":" +
-          currentdate.getMinutes() +
-          ":" +
-          currentdate.getSeconds();
-
-        const fileMetadata = {
-          name: filename, // Change the filename if needed
-          parents: ["1uPWrA3iDKRJyfGHHpXzGEKhH6BX08AMq"], // Change to your desired folder ID
-        };
-
-        const filePath = "db/backup/backup.db"; // Path to your database backup file
-
-        const media = {
-          mimeType: "application/octet-stream",
-          body: fs.createReadStream(filePath),
-        };
-
-        const uploadedFile = await drive.files.create({
-          resource: fileMetadata,
-          media: media,
-          fields: "id",
-        });
-
-        console.log(
-          "File uploaded successfully. File ID:",
-          uploadedFile.data.id
-        );
-        res.status(200).send("File uploaded successfully");
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        res.status(500).send("Error uploading file");
-      }
-    });
-
-    backup.finish();
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("Error occurred");
-  }
-});
-
 app.get("/auth-check", authenticateToken, (req, res) => {
   // If authentication middleware passes, user is authenticated
   res.status(200).json({ success: true, message: "Authorized user" }); // Send a 200 OK status code
 });
 
-const axios = require("axios");
 
-// Define the function to call the endpoints
 const backupDaily = async () => {
   try {
     const currentDate = new Date();
@@ -733,18 +653,13 @@ const backupDaily = async () => {
     const folderName = `Last_Sync_${formattedDate}`;
     const folderPath = path.join(__dirname, folderName);
 
-    // const folderPath = path.join(__dirname, filename);
-
     if (!fs.existsSync(folderPath)) {
       // Create the folder
       fs.mkdirSync(folderPath);
     }
-    console.log(folderPath);
-    // Call the /exportcsv endpoint
     await axios.get(`http://localhost:${PORT}/exportcsv`);
     console.log("CSV backup completed successfully");
 
-    // Call the /exporthtml endpoint
     await axios.get(`http://localhost:${PORT}/exporthtml`);
     console.log("HTML backup completed successfully");
 
@@ -753,9 +668,6 @@ const backupDaily = async () => {
     console.error("Error during backup:", error.message);
   }
 };
-// ------
-// backupDaily();
-// ------
 
 async function uploadFilesToDrive(folderName, files, parentFolderId) {
   try {
@@ -809,7 +721,7 @@ async function uploadToDrive() {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
   const folderName = `Last_Sync_${formattedDate}`;
-  const parentFolderId = "1UuaylOpxps66HyO3aZ-CxKvnxcuvkMBj"; // Replace with your "backup" folder ID
+  const parentFolderId = "1UuaylOpxps66HyO3aZ-CxKvnxcuvkMBj"; // Replace with "backup" folder ID
 
   const files = [
     {
@@ -825,8 +737,59 @@ async function uploadToDrive() {
   ];
 
   await uploadFilesToDrive(folderName, files, parentFolderId);
-  // await uploadFilesToDrive(folderName,filePath)
 }
+
+/**
+ * Validates the format of a time string.
+ * 
+ * Time format should be in the following format:
+ *   - Hours: 1-12 (with optional leading zero)
+ *   - Minutes: 00-59
+ *   - Period: am or pm (case-insensitive)
+ * 
+ * @param {string} time - The time string to validate.
+ * @returns {boolean} - True if the time format is valid, false otherwise.
+ */
+
+function validateTimeFormat(time) {
+  const regex = /^(0?[1-9]|1[0-2]):([0-5][0-9]) (am|pm)$/i;
+  return regex.test(time);
+}
+
+function generateCronSchedule(time) {
+  const [timeStr, period] = time.split(' ');
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  let cronHours = hours;
+  if (period === 'pm' && hours !== 12) {
+    cronHours += 12;
+  } else if (period === 'am' && hours === 12) {
+    cronHours = 0;
+  }
+  const cronSchedule = `${minutes} ${cronHours} * * *`;
+  return cronSchedule;
+}
+
+// Function to schedule cron job internally
+function scheduleCronJob() {
+  let time = process.env.CRON_TIME || '11:30 pm'; // Get time from environment variable or set default
+  time = time.toLowerCase();
+
+  if (!validateTimeFormat(time)) {
+    console.error('Invalid time format');
+    return;
+  }
+
+  const cronSchedule = generateCronSchedule(time);
+  cron.schedule(cronSchedule, () => {
+    console.log('Cron job executed at:', new Date().toISOString());
+    backupDaily();
+  });
+
+  console.log('Cron job scheduled successfully');
+}
+
+// Call the scheduling function when the application starts
+scheduleCronJob();
 
 // All other GET requests not handled before will return our React app
 app.get("*", (req, res) => {

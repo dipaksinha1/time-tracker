@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "cd backend && node index.js defaultTime=12:40pm",
-    "build": "cd backend && npm install && cd .. && cd frontend && npm install && npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "cd backend && npm install && cd .. && cd frontend && npm install && npm run build"
   },
   "keywords": [],
   "author": "",
