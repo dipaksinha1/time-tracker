@@ -19,9 +19,9 @@ Once the installation is complete, you can access the Time Tracker application t
 
 ## Features
 
-- Track time spent on tasks or projects.
-- Simple and intuitive user interface.
-- Customizable settings, such as default time.
+- Monitor user's duration spent in the store.
+- Simple and intuitive user interface for clock in/out time.
+- Create a backup every day in admin's google drive for last two week attendance.
 - Easily configurable backend and frontend components.
 
 ## Contributing
