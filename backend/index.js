@@ -455,15 +455,22 @@ app.get("/users", (req, res) => {
 
 app.get("/exportcsv", async (req, res) => {
   // Query data from SQLite3 database
+
+  // Calculate the date 14 days ago
+  const date14DaysAgo = new Date();
+  date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
+  const formattedDate14DaysAgo = date14DaysAgo.toISOString().split("T")[0];
+
   const query = `
       SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
              Attendance.clock_in, 
              Attendance.clock_out
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
+      WHERE DATE(Attendance.clock_in) >= DATE(?)
       ORDER BY  DATE(Attendance.clock_in), fullname
   `;
-  db.all(query, async (err, rows) => {
+  db.all(query,[formattedDate14DaysAgo], async (err, rows) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving data from database");
@@ -524,6 +531,12 @@ app.get("/exportcsv", async (req, res) => {
 });
 
 app.get("/exporthtml", async (req, res) => {
+
+    // Calculate the date 14 days ago
+    const date14DaysAgo = new Date();
+    date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
+    const formattedDate14DaysAgo = date14DaysAgo.toISOString().split('T')[0];
+
   // Query data from SQLite3 database
   const query = `
       SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
@@ -533,9 +546,10 @@ app.get("/exporthtml", async (req, res) => {
              Attendance.image2
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
+      WHERE DATE(Attendance.clock_in) >= DATE(?)
       ORDER BY  DATE(Attendance.clock_in), fullname
   `;
-  db.all(query, async (err, rows) => {
+  db.all(query, [formattedDate14DaysAgo],async (err, rows) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving data from database");

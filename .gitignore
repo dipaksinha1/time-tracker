@@ -2,7 +2,7 @@ node_modules/
 .vscode/
 dist/
 frontend/.parcel-cache
-backend/db/
+backend/db/sqlite.db
 .env
 google-api-key.json
 .vercel
