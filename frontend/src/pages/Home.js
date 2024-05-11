@@ -3,7 +3,7 @@ import TimeSheet from "./../components/TimeSheet";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import Webcam from "react-webcam";
-import moment from 'moment';
+import moment from "moment";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -15,16 +15,15 @@ const Home = () => {
       try {
         // Send request to server to check if user is authenticated
         const response = await axios.get("/auth-check");
-    
+
         if (response.status === 200) {
           // User is authenticated, fetch data
           try {
             const fetchDataResponse = await axios.get("/last-attendance");
-    
+
             if (fetchDataResponse.status === 200) {
               const { data } = fetchDataResponse.data;
-              console.log(data);
-    
+
               if (data.clock_out === null) {
                 setIsRunning(true);
               }
@@ -43,7 +42,6 @@ const Home = () => {
         navigate("/login");
       }
     };
-    
 
     checkTokenAndFetchData();
   }, [navigate]);
@@ -56,18 +54,14 @@ const Home = () => {
         image: userPhoto,
       });
       if (result?.data?.success) {
-        console.log(result.data.success);
         setIsRunning((prevState) => !prevState);
       }
-      console.log(result);
     } catch (error) {
-      console.log(error);
       if (error?.response?.status === 401) navigate("/login");
     }
   };
 
   const handleStartStop = () => {
-    console.log(userPhoto);
     if (userPhoto === null) return;
     fetchData();
   };

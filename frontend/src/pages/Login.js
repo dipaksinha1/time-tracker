@@ -14,7 +14,6 @@ function Login() {
     const fetchUsers = async () => {
       try {
         const result = await axios.get("/users");
-        console.log(result?.data);
         setEmail(result?.data?.data[0]?.email);
         setUsers(result?.data?.data);
       } catch (error) {
@@ -45,14 +44,13 @@ function Login() {
         password: password,
       })
       .then((result) => {
-        console.log(result.data);
+        
         // alert("success");
         navigate("/home");
       })
       .catch((error) => {
         // alert("service error");
         setErrorMessage("Invalid Password");
-        console.log(error);
       });
   };
 
