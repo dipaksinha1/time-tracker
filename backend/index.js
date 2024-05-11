@@ -17,6 +17,7 @@ const cookieParser = require("cookie-parser");
 const { google } = require("googleapis");
 const dbPath = path.resolve(__dirname, "db", "sqlite.db");
 const csv = require("csv-writer").createObjectCsvWriter;
+const momentTimezone = require("moment-timezone");
 
 // Create SQLite database connection and specify disk storage
 const db = new sqlite3.Database(
@@ -175,7 +176,6 @@ app.get("/logout", (req, res) => {
 // middleware
 function authenticateToken(req, res, next) {
   const token = req.cookies.token;
-  console.log(token);
   if (!token) {
     return res.status(401).json({
       success: false,
@@ -192,6 +192,15 @@ function authenticateToken(req, res, next) {
     req.user = user;
     next();
   });
+}
+
+// Function to validate ISO date format
+function isValidISODate(dateString) {
+  // Parse the input string with moment using strict mode
+  const parsedDate = moment(dateString, moment.ISO_8601, true);
+
+  // Check if the parsed date is valid
+  return parsedDate.isValid();
 }
 
 //add-clock in only if last record was clock out or 1st one
@@ -211,20 +220,22 @@ app.post("/clock-in", authenticateToken, (req, res) => {
       .json({ error: "clientTimestamp must be a valid ISO date string." });
   }
 
-  // Function to validate ISO date format
-  function isValidISODate(dateString) {
-    return new Date(dateString).toISOString() === dateString;
-  }
+  const currentTime = moment().toISOString(true);
 
-  const currentTime = new Date().toISOString();
+  // Use `moment` to parse and calculate the difference
+  const serverTime = moment(currentTime);
+  const clientTime = moment(clientTimestamp);
 
-  // Check the time difference between the server and the client
-  const serverTime = new Date(currentTime).getTime();
-  const clientTime = new Date(clientTimestamp).getTime();
-  const timeDifferenceSeconds = Math.abs(serverTime - clientTime) / 1000;
+  // Calculate the difference in seconds using `diff`
+  const timeDifferenceSeconds = Math.abs(
+    serverTime.diff(clientTime, "seconds")
+  );
   console.log(timeDifferenceSeconds);
-  // Check if the time difference is within the allowed range (10 seconds)
-  const allowedTimeDifference = 10; // Adjust as needed
+
+  // Define an allowed time difference threshold in seconds
+  const allowedTimeDifference = 10;
+
+  // Check if the difference is within the allowed range
   if (timeDifferenceSeconds > allowedTimeDifference) {
     return res.status(400).json({
       success: false,
@@ -233,7 +244,7 @@ app.post("/clock-in", authenticateToken, (req, res) => {
     });
   }
 
-  const currentDate = new Date().toISOString().slice(0, 10); // Get the current date in YYYY-MM-DD format
+  const currentDate = moment().format("YYYY-MM-DD"); // Get the current date in YYYY-MM-DD format
 
   // Check if the user has any existing attendance records
   db.get(
@@ -294,20 +305,22 @@ app.post("/clock-out", authenticateToken, (req, res) => {
       .json({ error: "clientTimestamp must be a valid ISO date string." });
   }
 
-  // Function to validate ISO date format
-  function isValidISODate(dateString) {
-    return new Date(dateString).toISOString() === dateString;
-  }
+  const currentTime = moment().toISOString(true);
 
-  const currentTime = new Date().toISOString();
+  // Use `moment` to parse and calculate the difference
+  const serverTime = moment(currentTime);
+  const clientTime = moment(clientTimestamp);
 
-  // Check the time difference between the server and the client
-  const serverTime = new Date(currentTime).getTime();
-  const clientTime = new Date(clientTimestamp).getTime();
-  const timeDifferenceSeconds = Math.abs(serverTime - clientTime) / 1000;
+  // Calculate the difference in seconds using `diff`
+  const timeDifferenceSeconds = Math.abs(
+    serverTime.diff(clientTime, "seconds")
+  );
+  console.log(timeDifferenceSeconds);
 
-  // Check if the time difference is within the allowed range (10 seconds)
-  const allowedTimeDifference = 10; // Adjust as needed
+  // Define an allowed time difference threshold in seconds
+  const allowedTimeDifference = 10;
+
+  // Check if the difference is within the allowed range
   if (timeDifferenceSeconds > allowedTimeDifference) {
     return res.status(400).json({
       success: false,
@@ -316,7 +329,7 @@ app.post("/clock-out", authenticateToken, (req, res) => {
     });
   }
 
-  const currentDate = new Date().toISOString().slice(0, 10); // Get the current date in YYYY-MM-DD format
+  const currentDate = moment().format("YYYY-MM-DD"); // Get the current date in YYYY-MM-DD format
 
   // Continue with clock-out process
   // Check if the user has an existing clock-in record
@@ -362,12 +375,9 @@ app.post("/clock-out", authenticateToken, (req, res) => {
   );
 });
 
-//sellect only those filds which are needed
 app.get("/attendance-records", authenticateToken, (req, res) => {
   const { user } = req;
-  console.log(user.id);
-
-  const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
+  const currentDate = moment().format("YYYY-MM-DD"); // Get the current date in YYYY-MM-DD format
 
   db.all(
     "SELECT * FROM Attendance WHERE user_id = ? AND date(clock_in) = ? ORDER BY id DESC",
@@ -400,8 +410,8 @@ app.get("/get-all", (req, res) => {
 
 app.get("/last-attendance", authenticateToken, (req, res) => {
   const { user } = req;
-  const currentDate = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
-
+  const currentDate = moment().format("YYYY-MM-DD"); // Get the current date in YYYY-MM-DD format
+console.log(currentDate)
   //if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
   db.get(
     "SELECT * FROM Attendance WHERE user_id = ? AND date(clock_in) = ? ORDER BY id DESC LIMIT 1",
@@ -409,7 +419,7 @@ app.get("/last-attendance", authenticateToken, (req, res) => {
     (err, data) => {
       if (err || !data) {
         console.error(err);
-        return res.status(500).send({
+        return res.status(400).send({
           success: false,
           message: "Error retrieving attendance records",
         });
@@ -445,7 +455,6 @@ app.get("/users", (req, res) => {
       return res.status(500).json({ success: false, message: err.message });
     }
 
-    console.log(rows);
     res.status(200).json({
       success: true,
       data: rows,
@@ -454,12 +463,10 @@ app.get("/users", (req, res) => {
 });
 
 app.get("/exportcsv", async (req, res) => {
-  // Query data from SQLite3 database
-
   // Calculate the date 14 days ago
-  const date14DaysAgo = new Date();
-  date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
-  const formattedDate14DaysAgo = date14DaysAgo.toISOString().split("T")[0];
+  const formattedDate14DaysAgo = moment()
+    .subtract(14, "days")
+    .format("YYYY-MM-DD");
 
   const query = `
       SELECT (Users.firstname || " " || Users.lastname) AS fullname, 
@@ -470,7 +477,7 @@ app.get("/exportcsv", async (req, res) => {
       WHERE DATE(Attendance.clock_in) >= DATE(?)
       ORDER BY  DATE(Attendance.clock_in), fullname
   `;
-  db.all(query,[formattedDate14DaysAgo], async (err, rows) => {
+  db.all(query, [formattedDate14DaysAgo], async (err, rows) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving data from database");
@@ -496,8 +503,7 @@ app.get("/exportcsv", async (req, res) => {
       };
     });
 
-    const currentDate = new Date();
-    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const formattedDate = moment().format("DD-MM-YYYY"); // Format: DD-MM-YYYY
     const folderName = `Last_Sync_${formattedDate}`;
 
     // Set path for CSV file
@@ -531,11 +537,10 @@ app.get("/exportcsv", async (req, res) => {
 });
 
 app.get("/exporthtml", async (req, res) => {
-
-    // Calculate the date 14 days ago
-    const date14DaysAgo = new Date();
-    date14DaysAgo.setDate(date14DaysAgo.getDate() - 14);
-    const formattedDate14DaysAgo = date14DaysAgo.toISOString().split('T')[0];
+  // Calculate the date 14 days ago
+  const formattedDate14DaysAgo = moment()
+    .subtract(14, "days")
+    .format("YYYY-MM-DD");
 
   // Query data from SQLite3 database
   const query = `
@@ -549,7 +554,7 @@ app.get("/exporthtml", async (req, res) => {
       WHERE DATE(Attendance.clock_in) >= DATE(?)
       ORDER BY  DATE(Attendance.clock_in), fullname
   `;
-  db.all(query, [formattedDate14DaysAgo],async (err, rows) => {
+  db.all(query, [formattedDate14DaysAgo], async (err, rows) => {
     if (err) {
       console.error(err);
       res.status(500).send("Error retrieving data from database");
@@ -630,8 +635,7 @@ app.get("/exporthtml", async (req, res) => {
       </html>
     `;
 
-    const currentDate = new Date();
-    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const formattedDate = moment().format("DD-MM-YYYY"); // Format: DD-MM-YYYY
     const folderName = `Last_Sync_${formattedDate}`;
 
     // Define the file path where you want to save the HTML file
@@ -662,8 +666,7 @@ app.get("/auth-check", authenticateToken, (req, res) => {
 
 const backupDaily = async () => {
   try {
-    const currentDate = new Date();
-    const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+    const formattedDate = moment().format("DD-MM-YYYY");
 
     const folderName = `Last_Sync_${formattedDate}`;
     const folderPath = path.join(__dirname, folderName);
@@ -733,8 +736,7 @@ async function uploadFilesToDrive(folderName, files, parentFolderId) {
 }
 
 async function uploadToDrive() {
-  const currentDate = new Date();
-  const formattedDate = currentDate.toISOString().slice(0, 10); // Format: YYYY-MM-DD
+  const formattedDate = moment().format("DD-MM-YYYY");
   const folderName = `Last_Sync_${formattedDate}`;
   const parentFolderId = process.env.PARENT_FOLDER_ID; // Replace with "backup" folder ID
 
@@ -781,6 +783,7 @@ function generateCronSchedule(time) {
     cronHours = 0;
   }
   const cronSchedule = `${minutes} ${cronHours} * * *`;
+  console.log(cronSchedule)
   return cronSchedule;
 }
 
@@ -796,11 +799,11 @@ function scheduleCronJob() {
 
   const cronSchedule = generateCronSchedule(time);
   cron.schedule(cronSchedule, () => {
-    console.log("Cron job executed at:", new Date().toISOString());
+    console.log("Cron job executed at:", moment().toISOString(true));
     backupDaily();
   });
 
-  console.log("Cron job scheduled successfully");
+  console.log("Cron job scheduled successfully", time);
 }
 
 // Call the scheduling function when the application starts

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "cd backend && node index.js defaultTime=12:40pm",
+    "start": "cd backend && node index.js defaultTime=3:00pm",
     "build": "cd backend && npm install && cd .. && cd frontend && npm install && npm run build"
   },
   "keywords": [],

@@ -39,7 +39,6 @@ function Login() {
       return;
     }
 
-    console.log({ email, password });
     axios
       .post("/login", {
         email: email,

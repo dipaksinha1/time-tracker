@@ -3,6 +3,7 @@ import TimeSheet from "./../components/TimeSheet";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import Webcam from "react-webcam";
+import moment from 'moment';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ const Home = () => {
     const apiUrl = isRunning ? "/clock-out" : "/clock-in";
     try {
       const result = await axios.post(apiUrl, {
-        clientTimestamp: new Date().toISOString(),
+        clientTimestamp: moment().toISOString(true),
         image: userPhoto,
       });
       if (result?.data?.success) {
