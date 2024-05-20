@@ -411,7 +411,7 @@ app.get("/get-all", (req, res) => {
 app.get("/last-attendance", authenticateToken, (req, res) => {
   const { user } = req;
   const currentDate = moment().format("YYYY-MM-DD"); // Get the current date in YYYY-MM-DD format
-console.log(currentDate)
+  console.log(currentDate);
   //if soemone has clocked out yesetrday and logged in today then clock ou will be reset because this api ig getting todays data
   db.get(
     "SELECT * FROM Attendance WHERE user_id = ? AND date(clock_in) = ? ORDER BY id DESC LIMIT 1",
@@ -488,18 +488,27 @@ app.get("/exportcsv", async (req, res) => {
     const csvData = rows.map((row) => {
       const clockIn = moment(row.clock_in);
       const clockOut = moment(row.clock_out);
-      let duration;
+      let formattedDuration;
 
-      if (row.clock_in && row.clock_out)
-        duration = moment.duration(clockOut.diff(clockIn)).humanize();
-      else duration = "NA";
+      if (row.clock_in && row.clock_out) {
+        let duration = moment.duration(clockOut.diff(clockIn));
+        const hours = Math.floor(duration.asHours());
+        const minutes = Math.floor(duration.asMinutes()) % 60;
+        const seconds = Math.floor(duration.asSeconds()) % 60;
+
+        formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      } else {
+        formattedDuration = "NA";
+      }
 
       return {
         fullname: row.fullname,
         date: moment(row.clock_in).format("DD/MM/YYYY"),
         clockIn: moment(row.clock_in).format("hh:mm:ss a"),
         clockOut: moment(row.clock_out).format("hh:mm:ss a"),
-        duration: duration,
+        duration: formattedDuration,
       };
     });
 
@@ -594,11 +603,20 @@ app.get("/exporthtml", async (req, res) => {
     for (const row of rows) {
       const clockIn = moment(row.clock_in);
       const clockOut = moment(row.clock_out);
-      let duration;
+      let formattedDuration;
 
-      if (row.clock_in && row.clock_out)
-        duration = moment.duration(clockOut.diff(clockIn)).humanize();
-      else duration = "NA";
+      if (row.clock_in && row.clock_out) {
+        let duration = moment.duration(clockOut.diff(clockIn));
+        const hours = Math.floor(duration.asHours());
+        const minutes = Math.floor(duration.asMinutes()) % 60;
+        const seconds = Math.floor(duration.asSeconds()) % 60;
+
+        formattedDuration = `${hours.toString().padStart(2, "0")}:${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      } else {
+        formattedDuration = "NA";
+      }
 
       const clockInTime = moment(row.clock_in).format("hh:mm:ss a");
 
@@ -621,7 +639,7 @@ app.get("/exporthtml", async (req, res) => {
           <td style="border: 1px solid black; padding: 8px;">${dateString}</td>
           <td style="border: 1px solid black; padding: 8px;">${clockInTime}</td>
           <td style="border: 1px solid black; padding: 8px;">${clockOutTime}</td>
-          <td style="border: 1px solid black; padding: 8px;">${duration}</td>
+          <td style="border: 1px solid black; padding: 8px;">${formattedDuration}</td>
           <td style="border: 1px solid black; padding: 8px;"><img src="${base64Image1}" width="100" height="100"></td>
           <td style="border: 1px solid black; padding: 8px;"><img src="${base64Image2}" width="100" height="100"></td>
         </tr>
@@ -783,7 +801,7 @@ function generateCronSchedule(time) {
     cronHours = 0;
   }
   const cronSchedule = `${minutes} ${cronHours} * * *`;
-  console.log(cronSchedule)
+  console.log(cronSchedule);
   return cronSchedule;
 }
 
