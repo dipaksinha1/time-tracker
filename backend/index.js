@@ -462,6 +462,7 @@ app.get("/users", (req, res) => {
   });
 });
 
+
 app.get("/exportcsv", async (req, res) => {
   // Calculate the date 14 days ago
   const formattedDate14DaysAgo = moment()
@@ -475,7 +476,7 @@ app.get("/exportcsv", async (req, res) => {
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
       WHERE DATE(Attendance.clock_in) >= DATE(?)
-      ORDER BY  DATE(Attendance.clock_in), fullname
+      ORDER BY fullname, DATE(Attendance.clock_in)
   `;
   db.all(query, [formattedDate14DaysAgo], async (err, rows) => {
     if (err) {
@@ -484,14 +485,20 @@ app.get("/exportcsv", async (req, res) => {
       return;
     }
 
-    // Prepare CSV content
-    const csvData = rows.map((row) => {
+    const csvData = [];
+    let currentEmployee = null;
+    let totalDurationInSeconds = 0;
+
+    rows.forEach((row) => {
       const clockIn = moment(row.clock_in);
       const clockOut = moment(row.clock_out);
       let formattedDuration;
+      let durationInSeconds = 0;
 
       if (row.clock_in && row.clock_out) {
         let duration = moment.duration(clockOut.diff(clockIn));
+        durationInSeconds = duration.asSeconds();
+
         const hours = Math.floor(duration.asHours());
         const minutes = Math.floor(duration.asMinutes()) % 60;
         const seconds = Math.floor(duration.asSeconds()) % 60;
@@ -503,14 +510,60 @@ app.get("/exportcsv", async (req, res) => {
         formattedDuration = "NA";
       }
 
-      return {
+      if (currentEmployee !== row.fullname) {
+        if (currentEmployee !== null) {
+          // Add total row for the previous employee
+          const totalDuration = moment.duration(totalDurationInSeconds, 'seconds');
+          const totalHours = Math.floor(totalDuration.asHours());
+          const totalMinutes = Math.floor(totalDuration.asMinutes()) % 60;
+          const totalSeconds = Math.floor(totalDuration.asSeconds()) % 60;
+          const totalFormattedDuration = `${totalHours.toString().padStart(2, "0")}:${totalMinutes
+            .toString()
+            .padStart(2, "0")}:${totalSeconds.toString().padStart(2, "0")}`;
+
+          csvData.push({
+            fullname: currentEmployee,
+            date: "Total",
+            clockIn: "",
+            clockOut: "",
+            duration: totalFormattedDuration,
+          });
+
+          // Reset total duration for the next employee
+          totalDurationInSeconds = 0;
+        }
+        currentEmployee = row.fullname;
+      }
+
+      totalDurationInSeconds += durationInSeconds;
+
+      csvData.push({
         fullname: row.fullname,
         date: moment(row.clock_in).format("DD/MM/YYYY"),
         clockIn: moment(row.clock_in).format("hh:mm:ss a"),
         clockOut: moment(row.clock_out).format("hh:mm:ss a"),
         duration: formattedDuration,
-      };
+      });
     });
+
+    // Add total row for the last employee
+    if (currentEmployee !== null) {
+      const totalDuration = moment.duration(totalDurationInSeconds, 'seconds');
+      const totalHours = Math.floor(totalDuration.asHours());
+      const totalMinutes = Math.floor(totalDuration.asMinutes()) % 60;
+      const totalSeconds = Math.floor(totalDuration.asSeconds()) % 60;
+      const totalFormattedDuration = `${totalHours.toString().padStart(2, "0")}:${totalMinutes
+        .toString()
+        .padStart(2, "0")}:${totalSeconds.toString().padStart(2, "0")}`;
+
+      csvData.push({
+        fullname: currentEmployee,
+        date: "Total",
+        clockIn: "",
+        clockOut: "",
+        duration: totalFormattedDuration,
+      });
+    }
 
     const formattedDate = moment().format("DD-MM-YYYY"); // Format: DD-MM-YYYY
     const folderName = `Last_Sync_${formattedDate}`;
@@ -561,7 +614,7 @@ app.get("/exporthtml", async (req, res) => {
       FROM Attendance
       INNER JOIN Users ON Attendance.user_id = Users.id
       WHERE DATE(Attendance.clock_in) >= DATE(?)
-      ORDER BY  DATE(Attendance.clock_in), fullname
+      ORDER BY fullname, DATE(Attendance.clock_in)
   `;
   db.all(query, [formattedDate14DaysAgo], async (err, rows) => {
     if (err) {
